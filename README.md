@@ -1,20 +1,15 @@
-# Chord Vault v1.9 — Live Sessions
+# Chord Vault v1.9.1 — Leader Exit Safety
 
-BandAid / Chord Vault now connects Worship Leader cues between different phones through Supabase Realtime.
+Feature update for the BandAid GitHub Pages PWA.
 
-## New
-- Worship Leader can create a six-character live session.
-- Singers, Electric Guitar, Acoustic Guitar, Bass Guitar and Drum can join using the session code.
-- Worship cues are sent through Supabase and appear on other connected phones.
-- Anonymous Supabase authentication keeps each device identifiable without requiring band members to create accounts.
-- Worship Leader membership is protected server-side: joining users cannot self-assign the Worship Leader role.
-- Existing local preview cue transport remains as a same-device fallback.
+## Added
+- If the Worship Leader/session creator taps Leave, the live session is ended for everyone.
+- All connected band-member devices are automatically removed from the active session UI.
+- Members who leave only remove themselves; they do not end the session.
+- Ended sessions cannot be joined again.
+- Devices reopening an old saved session detect that it has ended and clear it.
 
-## Important setup step
-Before testing v1.9, run `supabase_v1_9_security.sql` once in the Supabase SQL Editor. This tightens the earlier membership policy and adds the secure session-creation function used by the app.
+## Supabase migration
+Before deploying/testing this version, run `supabase_v1_9_1_leader_exit.sql` once in the Supabase SQL Editor.
 
-## Hosting
-Configured for GitHub Pages at `/BandAid/`.
-
-## Data
-Song library remains local to the browser/device. Backup & Restore remains available. Supabase is currently used only for live sessions/cues.
+This release keeps the /BandAid/ PWA scope, v1.9 live cues, role picker, Singer Key Tester, BPM, and Backup & Restore.

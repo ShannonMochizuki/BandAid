@@ -246,7 +246,7 @@ qsa(".reader-tab").forEach(btn=>btn.addEventListener("click",()=>{
 }));
 
 
-// v1.9 — Supabase live sessions + Worship Leader cues
+// v1.9.1 — Supabase live sessions + Worship Leader cues
 const SUPABASE_URL = "https://qxfcpkbggzhvqapzwflf.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_pXykwrt70vDqIGQdhmGMwQ_yz3KCUU5";
 const LIVE_SESSION_STORAGE_KEY = "bandaidLiveSessionV1";
@@ -364,14 +364,32 @@ async function subscribeToLiveSession(){
     realtimeChannel = null;
   }
   realtimeChannel = supabaseClient
-    .channel(`bandaid-cues-${liveSession.id}`)
+    .channel(`bandaid-session-${liveSession.id}`)
     .on("postgres_changes", {
       event:"INSERT", schema:"public", table:"worship_cues", filter:`session_id=eq.${liveSession.id}`
     }, payload => showLiveCue(payload.new))
+    .on("postgres_changes", {
+      event:"UPDATE", schema:"public", table:"band_sessions", filter:`id=eq.${liveSession.id}`
+    }, payload => {
+      if(payload.new && payload.new.is_active === false){
+        handleSessionEnded();
+      }
+    })
     .subscribe(status => {
       if(status === "SUBSCRIBED") setSessionStatus(`Connected as ${activeRole}.`, "live");
       else if(status === "CHANNEL_ERROR" || status === "TIMED_OUT") setSessionStatus("Realtime connection problem. Retrying…", "error");
     });
+}
+
+async function handleSessionEnded(){
+  if(realtimeChannel && supabaseClient){
+    try { await supabaseClient.removeChannel(realtimeChannel); } catch(e) {}
+  }
+  realtimeChannel = null;
+  saveLiveSession(null);
+  setSessionStatus("Session ended by Worship Leader.", "error");
+  const status = $("lastCueSent");
+  if(status) status.textContent = "The Worship Leader ended the live session.";
 }
 
 async function createLiveSession(){
@@ -415,6 +433,23 @@ async function joinLiveSession(){
 }
 
 async function leaveLiveSession(){
+  const sessionToLeave = liveSession;
+  if(!sessionToLeave){
+    saveLiveSession(null);
+    return;
+  }
+  try{
+    await ensureSupabaseAuth();
+    const {data,error} = await supabaseClient.rpc("leave_band_session", {target_session:sessionToLeave.id});
+    if(error) throw error;
+    if(data === "ended"){
+      setSessionStatus("Live session ended for everyone.", "error");
+    }
+  }catch(err){
+    console.error(err);
+    setSessionStatus(`Could not leave session: ${err.message}`, "error");
+    return;
+  }
   if(realtimeChannel && supabaseClient){
     try { await supabaseClient.removeChannel(realtimeChannel); } catch(e) {}
   }
@@ -464,6 +499,17 @@ async function initLiveBackend(){
   if(!liveSession) return;
   try{
     await ensureSupabaseAuth();
+    const {data,error} = await supabaseClient
+      .from("band_sessions")
+      .select("id,is_active")
+      .eq("id", liveSession.id)
+      .maybeSingle();
+    if(error) throw error;
+    if(!data || data.is_active === false){
+      saveLiveSession(null);
+      setSessionStatus("This live session has ended.", "error");
+      return;
+    }
     await subscribeToLiveSession();
   }catch(err){
     console.error(err);
@@ -575,7 +621,7 @@ $("stopKeyTestBtn").addEventListener("click",stopKeyTest);
 // v1.6 — Backup & Restore
 const BACKUP_FORMAT = "BandAid Chord Vault Backup";
 const BACKUP_SCHEMA_VERSION = 1;
-const APP_VERSION = "1.9";
+const APP_VERSION = "1.9.1";
 let pendingRestore = null;
 
 function backupStatus(message, isError=false){
@@ -744,7 +790,7 @@ document.addEventListener("keydown",event=>{ if(event.key === "Escape" && !$("re
 if("serviceWorker" in navigator){
   window.addEventListener("load", async ()=>{
     try{
-      const registration = await navigator.serviceWorker.register("./sw.js?v=1.9", {scope:"./", updateViaCache:"none"});
+      const registration = await navigator.serviceWorker.register("./sw.js?v=1.9.1", {scope:"./", updateViaCache:"none"});
       await registration.update();
     }catch(_err){}
   });
