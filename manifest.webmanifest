@@ -1,7 +1,7 @@
 {
   "id": "/BandAid/",
-  "name": "Chord Vault",
-  "short_name": "Chord Vault",
+  "name": "BandAid",
+  "short_name": "BandAid",
   "description": "BandAid worship-team song library, personal charts and live session cues.",
   "start_url": "/BandAid/",
   "scope": "/BandAid/",
