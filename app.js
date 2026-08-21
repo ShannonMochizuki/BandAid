@@ -231,6 +231,175 @@ qsa(".reader-tab").forEach(btn=>btn.addEventListener("click",()=>{
   $(btn.dataset.rpanel).classList.add("active");
 }));
 
+
+// v1.6 — Backup & Restore
+const BACKUP_FORMAT = "BandAid Chord Vault Backup";
+const BACKUP_SCHEMA_VERSION = 1;
+const APP_VERSION = "1.6";
+let pendingRestore = null;
+
+function backupStatus(message, isError=false){
+  const el = $("backupStatus");
+  el.textContent = message;
+  el.classList.remove("hidden");
+  el.style.color = isError ? "#a12a2a" : "";
+}
+
+function normalizeImportedSong(song){
+  if(!song || typeof song !== "object") return null;
+  const now = new Date().toISOString();
+  const role = ROLES.includes(song.role) ? song.role : "Acoustic Guitar";
+  return {
+    id: String(song.id || uid()),
+    title: String(song.title || "").trim(),
+    artist: String(song.artist || ""),
+    role,
+    key: String(song.key || ""),
+    capo: String(song.capo || ""),
+    bpm: String(song.bpm || ""),
+    chords: String(song.chords || ""),
+    tabs: String(song.tabs || ""),
+    notes: String(song.notes || ""),
+    shapes: Array.isArray(song.shapes) ? song.shapes.map(shape => ({
+      name: String(shape?.name || ""),
+      frets: String(shape?.frets || ""),
+      fingers: String(shape?.fingers || "")
+    })) : [],
+    createdAt: song.createdAt || now,
+    updatedAt: song.updatedAt || now
+  };
+}
+
+function exportBackup(){
+  const payload = {
+    format: BACKUP_FORMAT,
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    appVersion: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    source: {
+      app: "Chord Vault",
+      repository: "BandAid",
+      storageKey: STORAGE_KEY
+    },
+    data: {
+      songs,
+      activeRole
+    }
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `BandAid_ChordVault_Backup_${date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  backupStatus(`Backup exported successfully: ${songs.length} song${songs.length===1?"":"s"}.`);
+}
+
+function extractBackup(raw){
+  // Current structured BandAid backup format.
+  if(raw && typeof raw === "object" && Array.isArray(raw.data?.songs)){
+    if(raw.format && raw.format !== BACKUP_FORMAT){
+      throw new Error("This JSON file is not a BandAid Chord Vault backup.");
+    }
+    return {
+      songs: raw.data.songs,
+      activeRole: ROLES.includes(raw.data.activeRole) ? raw.data.activeRole : null,
+      schemaVersion: raw.schemaVersion || 1,
+      exportedAt: raw.exportedAt || null
+    };
+  }
+  // Compatibility with a simple/raw song-array export if one is ever used.
+  if(Array.isArray(raw)){
+    return {songs:raw, activeRole:null, schemaVersion:0, exportedAt:null};
+  }
+  // Compatibility with an object that directly contains songs.
+  if(raw && typeof raw === "object" && Array.isArray(raw.songs)){
+    return {songs:raw.songs, activeRole:raw.activeRole || null, schemaVersion:0, exportedAt:raw.exportedAt || null};
+  }
+  throw new Error("No BandAid song library was found in this file.");
+}
+
+async function prepareRestore(file){
+  try{
+    if(!file) return;
+    const text = await file.text();
+    const raw = JSON.parse(text);
+    const parsed = extractBackup(raw);
+    const imported = parsed.songs.map(normalizeImportedSong).filter(s => s && s.title);
+    if(!imported.length && parsed.songs.length){
+      throw new Error("The backup did not contain any valid songs with titles.");
+    }
+    pendingRestore = {...parsed, songs: imported, fileName:file.name};
+    const dateText = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : "unknown date";
+    $("restoreSummary").textContent = `${file.name} contains ${imported.length} song${imported.length===1?"":"s"} (backup date: ${dateText}). Your current library has ${songs.length}.`;
+    $("restoreDialog").classList.remove("hidden");
+  }catch(err){
+    pendingRestore = null;
+    backupStatus(`Restore failed: ${err.message}`, true);
+  }finally{
+    $("backupFileInput").value = "";
+  }
+}
+
+function closeRestoreDialog(){
+  $("restoreDialog").classList.add("hidden");
+  pendingRestore = null;
+}
+
+function mergeRestoredSongs(importedSongs){
+  const byId = new Map(songs.map(song => [song.id, song]));
+  importedSongs.forEach(imported => {
+    const current = byId.get(imported.id);
+    if(!current){
+      byId.set(imported.id, imported);
+      return;
+    }
+    const currentTime = Date.parse(current.updatedAt || "") || 0;
+    const importedTime = Date.parse(imported.updatedAt || "") || 0;
+    if(importedTime >= currentTime) byId.set(imported.id, imported);
+  });
+  songs = [...byId.values()];
+}
+
+function finishRestore(mode){
+  if(!pendingRestore) return;
+  const restored = pendingRestore;
+  if(mode === "replace"){
+    songs = restored.songs;
+  }else{
+    mergeRestoredSongs(restored.songs);
+  }
+  if(restored.activeRole && ROLES.includes(restored.activeRole)){
+    activeRole = restored.activeRole;
+    localStorage.setItem("chordVaultActiveRole", activeRole);
+  }
+  persist();
+  qsa(".role-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.role === activeRole));
+  renderLibrary();
+  $("restoreDialog").classList.add("hidden");
+  pendingRestore = null;
+  backupStatus(`${mode === "replace" ? "Restore" : "Merge"} complete. BandAid now has ${songs.length} song${songs.length===1?"":"s"}.`);
+}
+
+$("backupBtn").addEventListener("click",()=>{
+  $("backupPanel").classList.toggle("hidden");
+  if(!$("backupPanel").classList.contains("hidden")) $("backupPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+$("closeBackupBtn").addEventListener("click",()=>$("backupPanel").classList.add("hidden"));
+$("exportBackupBtn").addEventListener("click",exportBackup);
+$("importBackupBtn").addEventListener("click",()=>$("backupFileInput").click());
+$("backupFileInput").addEventListener("change",event=>prepareRestore(event.target.files?.[0]));
+$("mergeBackupBtn").addEventListener("click",()=>finishRestore("merge"));
+$("replaceBackupBtn").addEventListener("click",()=>finishRestore("replace"));
+$("cancelRestoreBtn").addEventListener("click",closeRestoreDialog);
+$("restoreDialog").addEventListener("click",event=>{ if(event.target === $("restoreDialog")) closeRestoreDialog(); });
+document.addEventListener("keydown",event=>{ if(event.key === "Escape" && !$("restoreDialog").classList.contains("hidden")) closeRestoreDialog(); });
+
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js", {scope:"./"}).catch(()=>{}));
 }

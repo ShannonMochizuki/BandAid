@@ -1,27 +1,34 @@
-# Chord Vault v1.5 — BandAid Migration
+# Chord Vault v1.6 — Backup & Restore
 
-This build migrates Chord Vault from the old `Guitar.github.io` project path to the new `BandAid` repository while keeping the v1.4 role libraries and BPM feature.
+This release adds portable backup and restore to the BandAid version of Chord Vault while keeping the v1.5 `/BandAid/` PWA configuration intact.
 
-Live GitHub Pages path:
-https://shannonmochizuki.github.io/BandAid/
+## New in v1.6
 
-## Included features
+- **Export Backup** creates a dated `.json` file containing the complete BandAid song library.
+- Backups include song title, artist, role/instrument, key, capo, BPM, chord chart, tabs, chord shapes, notes, timestamps, and the active role.
+- **Restore Backup** validates a selected JSON backup before changing local data.
+- Restore offers two choices:
+  - **Merge**: keep current songs and add/update songs from the backup. If the same song ID exists in both places, the newer `updatedAt` copy wins.
+  - **Replace**: replace the current BandAid library with the backup.
+- The export is deliberately limited to Chord Vault's own song data; it does not dump unrelated `localStorage` used by other apps on `shannonmochizuki.github.io`.
+- Backups include format/schema metadata so future BandAid versions can migrate older backup files safely.
+
+## Existing features retained
 
 - Separate libraries for Singers, Electric Guitar, Acoustic Guitar, and Bass Guitar.
-- BPM field for song chords.
-- Existing chord/tab/song functionality from v1.4.
-- Independent PWA identity and service-worker scope for BandAid.
+- BPM field.
+- Song chords, guitar tabs, chord shapes, and performance notes.
+- Independent BandAid PWA identity and scope.
 
 ## PWA configuration
 
 - ID: `/BandAid/`
 - Start URL: `/BandAid/`
 - Scope: `/BandAid/`
-- Service-worker cache: `bandaid-chord-vault-v1.5`
-- Service worker only handles requests under `/BandAid/`.
+- Service-worker cache: `bandaid-chord-vault-v1.6`
 
 ## Install / update
 
-Upload every file in this ZIP to the root of the `BandAid` repository. GitHub Pages should remain configured as `main` branch → `/(root)`.
+Upload every file in this ZIP to the root of the `BandAid` repository and replace the previous v1.5 files. GitHub Pages remains `main` branch → `/(root)`.
 
-Because both the old and new project sites are under the same `shannonmochizuki.github.io` origin, browser localStorage remains available to the app. The PWA identity itself is new, however, so remove the old installed Guitar/Chord Vault PWA if you no longer need it and install the BandAid version from the new site.
+Updating the app files does not intentionally delete the current song library. The new Backup & Restore feature is there so you can also keep a portable copy outside browser storage.

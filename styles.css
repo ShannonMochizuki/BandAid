@@ -105,3 +105,30 @@ label input{margin-top:6px}
   .song-list{grid-template-columns:1fr}
   .reader-title-row{align-items:flex-start}
 }
+
+/* v1.6 — Backup & Restore */
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.backup-panel{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;
+  box-shadow:var(--shadow);margin-bottom:16px;display:flex;gap:18px;align-items:center;justify-content:space-between
+}
+.backup-copy{max-width:620px}
+.backup-copy h2{margin:.2rem 0 .35rem;font-size:1.25rem}
+.backup-copy p{margin:0;color:var(--muted);line-height:1.5;font-size:.9rem}
+.backup-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.backup-status{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--soft);font-size:.86rem;line-height:1.45}
+.dialog-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px}
+.dialog-card{width:min(540px,100%);background:#fff;border-radius:20px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.22)}
+.dialog-copy{color:var(--muted);line-height:1.5;margin:8px 0 16px}
+.restore-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.restore-choice{padding:14px;text-align:left;display:flex;flex-direction:column;gap:5px;min-height:104px}
+.restore-choice span{font-size:.8rem;font-weight:500;line-height:1.4;opacity:.8}
+.dialog-cancel{width:100%;margin-top:8px}
+@media(max-width:700px){
+  .top-actions{width:100%;justify-content:stretch}
+  .top-actions button{flex:1}
+  .backup-panel{display:block}
+  .backup-actions{justify-content:stretch;margin-top:14px}
+  .backup-actions button{flex:1 1 140px}
+  .restore-options{grid-template-columns:1fr}
+}

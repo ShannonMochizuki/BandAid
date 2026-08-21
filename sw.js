@@ -1,4 +1,4 @@
-const CACHE = "bandaid-chord-vault-v1.5";
+const CACHE = "bandaid-chord-vault-v1.6";
 const CACHE_PREFIX = "bandaid-chord-vault-";
 const ASSETS = [
   "./",

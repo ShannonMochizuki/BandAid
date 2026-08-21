@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Chord Vault v1.5 — BandAid Migration -->
+<!-- Chord Vault v1.6 — Backup & Restore -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -19,7 +19,10 @@
         <div class="eyebrow">PERSONAL SONGBOOK</div>
         <h1>Chord Vault</h1>
       </div>
-      <button id="newSongBtn" class="primary">+ New Song</button>
+      <div class="top-actions">
+        <button id="backupBtn" class="secondary">Backup & Restore</button>
+        <button id="newSongBtn" class="primary">+ New Song</button>
+      </div>
     </header>
 
     <main>
@@ -29,6 +32,22 @@
           <button class="role-tab" data-role="Electric Guitar">Electric Guitar</button>
           <button class="role-tab" data-role="Acoustic Guitar">Acoustic Guitar</button>
           <button class="role-tab" data-role="Bass Guitar">Bass Guitar</button>
+        </div>
+
+
+        <div id="backupPanel" class="backup-panel hidden" aria-live="polite">
+          <div class="backup-copy">
+            <div class="eyebrow">DATA SAFETY</div>
+            <h2>Backup & Restore</h2>
+            <p>Export your BandAid song library to a JSON file, or restore a previous backup. Backups include songs, roles, BPM, chords, tabs, chord shapes and notes.</p>
+          </div>
+          <div class="backup-actions">
+            <button id="exportBackupBtn" class="primary">Export Backup</button>
+            <button id="importBackupBtn" class="secondary">Restore Backup</button>
+            <button id="closeBackupBtn" class="ghost">Close</button>
+            <input id="backupFileInput" type="file" accept="application/json,.json" hidden>
+          </div>
+          <div id="backupStatus" class="backup-status hidden"></div>
         </div>
 
         <div class="toolbar">
@@ -147,6 +166,26 @@ E|----------------|"></textarea>
         </article>
       </section>
     </main>
+
+
+    <div id="restoreDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
+      <div class="dialog-card">
+        <div class="eyebrow">RESTORE BACKUP</div>
+        <h2 id="restoreTitle">How should this backup be restored?</h2>
+        <p id="restoreSummary" class="dialog-copy"></p>
+        <div class="restore-options">
+          <button id="mergeBackupBtn" class="secondary restore-choice">
+            <strong>Merge</strong>
+            <span>Keep current songs and add/update songs from the backup.</span>
+          </button>
+          <button id="replaceBackupBtn" class="primary restore-choice">
+            <strong>Replace</strong>
+            <span>Replace the current BandAid library with this backup.</span>
+          </button>
+        </div>
+        <button id="cancelRestoreBtn" class="ghost dialog-cancel">Cancel</button>
+      </div>
+    </div>
 
     <template id="shapeTemplate">
       <div class="shape-card">
