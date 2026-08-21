@@ -246,24 +246,95 @@ qsa(".reader-tab").forEach(btn=>btn.addEventListener("click",()=>{
 }));
 
 
-// v1.8 — Worship Leader live cues + Singer Key Tester
+// v1.9 — Supabase live sessions + Worship Leader cues
+const SUPABASE_URL = "https://qxfcpkbggzhvqapzwflf.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_pXykwrt70vDqIGQdhmGMwQ_yz3KCUU5";
+const LIVE_SESSION_STORAGE_KEY = "bandaidLiveSessionV1";
 const LIVE_CUE_KEY = "bandaidLiveCueV1";
+
+let supabaseClient = null;
+let supabaseUser = null;
+let realtimeChannel = null;
+let liveSession = loadLiveSession();
 let cueChannel = null;
 try { cueChannel = new BroadcastChannel("bandaid-live-cues-v1"); } catch(e) {}
+
+function loadLiveSession(){
+  try { return JSON.parse(localStorage.getItem(LIVE_SESSION_STORAGE_KEY)) || null; }
+  catch(e){ return null; }
+}
+function saveLiveSession(session){
+  liveSession = session;
+  if(session) localStorage.setItem(LIVE_SESSION_STORAGE_KEY, JSON.stringify(session));
+  else localStorage.removeItem(LIVE_SESSION_STORAGE_KEY);
+  renderLiveSessionUI();
+}
+function roleSlug(role){
+  return ({
+    "Worship Leader":"worship-leader",
+    "Singers":"singer",
+    "Electric Guitar":"electric-guitar",
+    "Acoustic Guitar":"acoustic-guitar",
+    "Bass Guitar":"bass-guitar",
+    "Drum":"drum"
+  })[role] || "singer";
+}
+function makeSessionCode(){
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  crypto.getRandomValues(new Uint8Array(6)).forEach(n => code += alphabet[n % alphabet.length]);
+  return code;
+}
+function setSessionStatus(message, state=""){
+  const status = $("sessionStatus");
+  const badge = $("liveSessionBadge");
+  if(status) status.textContent = message;
+  if(badge){
+    badge.classList.remove("live","connecting","error");
+    if(state) badge.classList.add(state);
+    badge.textContent = state === "live" ? "● Live" : state === "connecting" ? "Connecting…" : state === "error" ? "Error" : "Offline";
+  }
+}
+function renderLiveSessionUI(){
+  const leaderActions = $("leaderSessionActions");
+  const memberActions = $("memberSessionActions");
+  const connected = $("connectedSession");
+  if(!leaderActions || !memberActions || !connected) return;
+  const isLeader = activeRole === "Worship Leader";
+  leaderActions.classList.toggle("hidden", !!liveSession || !isLeader);
+  memberActions.classList.toggle("hidden", !!liveSession || isLeader);
+  connected.classList.toggle("hidden", !liveSession);
+  if(liveSession){
+    $("connectedSessionCode").textContent = liveSession.code || "LIVE";
+    $("liveSessionTitle").textContent = "Band connected";
+    $("liveSessionHelp").textContent = isLeader ? "Your cue buttons will broadcast to this session." : "Worship Leader cues will appear on this device.";
+    setSessionStatus(`Connected as ${activeRole}.`, "live");
+  }else{
+    $("liveSessionTitle").textContent = isLeader ? "Start a live session" : "Join the live session";
+    $("liveSessionHelp").textContent = isLeader ? "Create a short session code and share it with the band." : "Enter the session code shown by your Worship Leader.";
+    setSessionStatus("Not connected.");
+  }
+  const cueBadge = $("cueConnectionBadge");
+  if(cueBadge) cueBadge.textContent = liveSession ? "● Live" : "Not connected";
+  qsa(".cue-btn").forEach(btn => btn.disabled = isLeader && !liveSession);
+}
 
 function updateRoleTools(){
   const worshipPanel = $("worshipCuePanel");
   if(worshipPanel) worshipPanel.classList.toggle("hidden", activeRole !== "Worship Leader");
   const banner = $("liveCueBanner");
   if(banner && activeRole === "Worship Leader") banner.classList.add("hidden");
+  renderLiveSessionUI();
 }
 
 function showLiveCue(cue, source="Worship Leader"){
   if(!cue || activeRole === "Worship Leader") return;
   const banner = $("liveCueBanner");
   if(!banner) return;
-  $("liveCueText").textContent = cue.label || cue;
-  $("liveCueTime").textContent = cue.sentAt ? new Date(cue.sentAt).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "now";
+  const label = cue.label || cue.cue || cue;
+  $("liveCueText").textContent = label;
+  const sentAt = cue.sentAt || cue.created_at;
+  $("liveCueTime").textContent = sentAt ? new Date(sentAt).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "now";
   banner.classList.remove("hidden");
   banner.classList.remove("cue-pulse");
   void banner.offsetWidth;
@@ -271,15 +342,115 @@ function showLiveCue(cue, source="Worship Leader"){
   if(navigator.vibrate) navigator.vibrate(80);
 }
 
-function sendLiveCue(label){
+async function ensureSupabaseAuth(){
+  if(!window.supabase?.createClient) throw new Error("Supabase library could not load. Check your internet connection.");
+  if(!supabaseClient){
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}
+    });
+  }
+  const {data:{session}} = await supabaseClient.auth.getSession();
+  if(session?.user){ supabaseUser = session.user; return session.user; }
+  const {data,error} = await supabaseClient.auth.signInAnonymously();
+  if(error) throw error;
+  supabaseUser = data.user;
+  return data.user;
+}
+
+async function subscribeToLiveSession(){
+  if(!supabaseClient || !liveSession?.id) return;
+  if(realtimeChannel){
+    try { await supabaseClient.removeChannel(realtimeChannel); } catch(e) {}
+    realtimeChannel = null;
+  }
+  realtimeChannel = supabaseClient
+    .channel(`bandaid-cues-${liveSession.id}`)
+    .on("postgres_changes", {
+      event:"INSERT", schema:"public", table:"worship_cues", filter:`session_id=eq.${liveSession.id}`
+    }, payload => showLiveCue(payload.new))
+    .subscribe(status => {
+      if(status === "SUBSCRIBED") setSessionStatus(`Connected as ${activeRole}.`, "live");
+      else if(status === "CHANNEL_ERROR" || status === "TIMED_OUT") setSessionStatus("Realtime connection problem. Retrying…", "error");
+    });
+}
+
+async function createLiveSession(){
+  try{
+    setSessionStatus("Creating live session…", "connecting");
+    const user = await ensureSupabaseAuth();
+    let lastError = null;
+    for(let attempt=0; attempt<4; attempt++){
+      const code = makeSessionCode();
+      const {data,error} = await supabaseClient.rpc("create_band_session", {session_code:code});
+      if(!error && data){
+        saveLiveSession({id:data, code, role:"worship-leader", userId:user.id});
+        await subscribeToLiveSession();
+        return;
+      }
+      lastError = error;
+      if(!String(error?.message||"").toLowerCase().includes("duplicate")) break;
+    }
+    throw lastError || new Error("Could not create the session.");
+  }catch(err){
+    console.error(err);
+    setSessionStatus(`Could not create session: ${err.message}`, "error");
+  }
+}
+
+async function joinLiveSession(){
+  const code = $("sessionCodeInput").value.trim().toUpperCase();
+  if(!code){ $("sessionCodeInput").focus(); return; }
+  if(activeRole === "Worship Leader") return;
+  try{
+    setSessionStatus("Joining session…", "connecting");
+    const user = await ensureSupabaseAuth();
+    const {data,error} = await supabaseClient.rpc("join_band_session", {join_code:code, selected_role:roleSlug(activeRole)});
+    if(error) throw error;
+    saveLiveSession({id:data, code, role:roleSlug(activeRole), userId:user.id});
+    await subscribeToLiveSession();
+  }catch(err){
+    console.error(err);
+    setSessionStatus(err.message?.includes("Session not found") ? "Session code not found." : `Could not join: ${err.message}`, "error");
+  }
+}
+
+async function leaveLiveSession(){
+  if(realtimeChannel && supabaseClient){
+    try { await supabaseClient.removeChannel(realtimeChannel); } catch(e) {}
+  }
+  realtimeChannel = null;
+  saveLiveSession(null);
+}
+
+async function sendLiveCue(label){
   const cue = {label, sentAt:new Date().toISOString(), from:"Worship Leader"};
   localStorage.setItem(LIVE_CUE_KEY, JSON.stringify(cue));
   if(cueChannel) cueChannel.postMessage(cue);
-  const status = $("lastCueSent");
-  if(status) status.textContent = `Sent: ${label} · ${new Date(cue.sentAt).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
-  qsa(".cue-btn").forEach(btn=>btn.classList.toggle("active", btn.dataset.cue === label));
+  if(!liveSession){
+    setSessionStatus("Create a live session before sending cues.", "error");
+    return;
+  }
+  try{
+    const user = await ensureSupabaseAuth();
+    const {error} = await supabaseClient.from("worship_cues").insert({
+      session_id:liveSession.id,
+      cue:label,
+      created_by:user.id
+    });
+    if(error) throw error;
+    const status = $("lastCueSent");
+    if(status) status.textContent = `Sent: ${label} · ${new Date(cue.sentAt).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+    qsa(".cue-btn").forEach(btn=>btn.classList.toggle("active", btn.dataset.cue === label));
+  }catch(err){
+    console.error(err);
+    setSessionStatus(`Cue failed: ${err.message}`, "error");
+  }
 }
 
+$("createSessionBtn")?.addEventListener("click",createLiveSession);
+$("joinSessionBtn")?.addEventListener("click",joinLiveSession);
+$("leaveSessionBtn")?.addEventListener("click",leaveLiveSession);
+$("sessionCodeInput")?.addEventListener("keydown",e=>{ if(e.key === "Enter") joinLiveSession(); });
 qsa(".cue-btn").forEach(btn => btn.addEventListener("click",()=>sendLiveCue(btn.dataset.cue)));
 if(cueChannel) cueChannel.addEventListener("message",event=>showLiveCue(event.data));
 window.addEventListener("storage",event=>{
@@ -287,6 +458,19 @@ window.addEventListener("storage",event=>{
     try { showLiveCue(JSON.parse(event.newValue)); } catch(e) {}
   }
 });
+
+async function initLiveBackend(){
+  renderLiveSessionUI();
+  if(!liveSession) return;
+  try{
+    await ensureSupabaseAuth();
+    await subscribeToLiveSession();
+  }catch(err){
+    console.error(err);
+    setSessionStatus("Saved session found, but live connection is unavailable.", "error");
+  }
+}
+initLiveBackend();
 
 const NOTE_INDEX = {"C":0,"C#":1,"Db":1,"D":2,"D#":3,"Eb":3,"E":4,"F":5,"F#":6,"Gb":6,"G":7,"G#":8,"Ab":8,"A":9,"A#":10,"Bb":10,"B":11,"Cb":11};
 const SHARP_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -391,7 +575,7 @@ $("stopKeyTestBtn").addEventListener("click",stopKeyTest);
 // v1.6 — Backup & Restore
 const BACKUP_FORMAT = "BandAid Chord Vault Backup";
 const BACKUP_SCHEMA_VERSION = 1;
-const APP_VERSION = "1.8";
+const APP_VERSION = "1.9";
 let pendingRestore = null;
 
 function backupStatus(message, isError=false){
@@ -560,7 +744,7 @@ document.addEventListener("keydown",event=>{ if(event.key === "Escape" && !$("re
 if("serviceWorker" in navigator){
   window.addEventListener("load", async ()=>{
     try{
-      const registration = await navigator.serviceWorker.register("./sw.js?v=1.8.1", {scope:"./", updateViaCache:"none"});
+      const registration = await navigator.serviceWorker.register("./sw.js?v=1.9", {scope:"./", updateViaCache:"none"});
       await registration.update();
     }catch(_err){}
   });

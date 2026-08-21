@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Chord Vault v1.8.1 — PWA Update Fix -->
+<!-- Chord Vault v1.9 — Live Sessions -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=1.8.1">
-  <link rel="stylesheet" href="./styles.css?v=1.8.1">
+  <link rel="manifest" href="./manifest.webmanifest?v=1.9">
+  <link rel="stylesheet" href="./styles.css?v=1.9">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v1.8.1</div>
+    <div class="version-indicator" aria-label="App version">v1.9</div>
 
     <header class="topbar">
       <div>
@@ -75,15 +75,43 @@
           <span id="liveCueTime" class="live-cue-time"></span>
         </div>
 
+        <section id="liveSessionPanel" class="live-session-panel" aria-label="BandAid live session">
+          <div class="live-session-head">
+            <div>
+              <div class="eyebrow">LIVE SESSION</div>
+              <h2 id="liveSessionTitle">Connect the band</h2>
+            </div>
+            <span id="liveSessionBadge" class="cue-connection-badge">Offline</span>
+          </div>
+          <p id="liveSessionHelp" class="worship-cue-help">Create or join a session so worship cues can travel between phones.</p>
+          <div id="leaderSessionActions" class="session-actions hidden">
+            <button id="createSessionBtn" class="primary">Create Live Session</button>
+          </div>
+          <div id="memberSessionActions" class="session-join hidden">
+            <label>Session code
+              <input id="sessionCodeInput" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="e.g. A7K3Q9" />
+            </label>
+            <button id="joinSessionBtn" class="primary">Join Session</button>
+          </div>
+          <div id="connectedSession" class="connected-session hidden">
+            <div>
+              <span class="eyebrow">CONNECTED</span>
+              <strong id="connectedSessionCode">—</strong>
+            </div>
+            <button id="leaveSessionBtn" class="ghost">Leave</button>
+          </div>
+          <div id="sessionStatus" class="last-cue-sent">Not connected.</div>
+        </section>
+
         <section id="worshipCuePanel" class="worship-cue-panel hidden" aria-label="Live worship cues">
           <div class="worship-cue-head">
             <div>
               <div class="eyebrow">LIVE CUES</div>
               <h2>What’s coming next?</h2>
             </div>
-            <span id="cueConnectionBadge" class="cue-connection-badge">Local preview</span>
+            <span id="cueConnectionBadge" class="cue-connection-badge">Not connected</span>
           </div>
-          <p class="worship-cue-help">Tap a cue to broadcast it to the band. Cross-device broadcasting will activate when BandAid is connected to the shared live backend.</p>
+          <p class="worship-cue-help">Tap a cue to broadcast what is coming next to every connected BandAid device in this live session.</p>
           <div class="cue-button-grid">
             <button class="cue-btn" data-cue="Verse 1">Verse 1</button>
             <button class="cue-btn" data-cue="Chorus">Chorus</button>
@@ -286,6 +314,7 @@ E|----------------|"></textarea>
     </template>
   </div>
 
-  <script src="./app.js?v=1.8.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
+  <script src="./app.js?v=1.9"></script>
 </body>
 </html>

@@ -223,3 +223,25 @@ label input{margin-top:6px}
   .key-tester-controls{grid-template-columns:1fr 1fr}
   .key-tester-controls label{grid-column:1/-1}
 }
+
+
+/* v1.9 — Supabase live sessions */
+.live-session-panel{
+  background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)
+}
+.live-session-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.live-session-head h2{margin:.2rem 0 0;font-size:1.3rem}
+.session-actions{display:flex;gap:8px;flex-wrap:wrap}
+.session-join{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.session-join label{min-width:0}
+.session-join input{text-transform:uppercase;letter-spacing:.14em;font-weight:800}
+.connected-session{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 13px;background:var(--soft);border-radius:14px}
+.connected-session>div{display:flex;flex-direction:column;gap:3px}
+.connected-session strong{font-size:1.15rem;letter-spacing:.14em}
+.cue-connection-badge.live{background:#e8f4e9;color:#245a2a}
+.cue-connection-badge.connecting{background:#f5f1df;color:#685816}
+.cue-connection-badge.error{background:#f8e8e8;color:#8b2727}
+@media(max-width:700px){
+  .session-join{grid-template-columns:1fr}
+  .session-join button{width:100%}
+}

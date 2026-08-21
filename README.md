@@ -1,29 +1,20 @@
-# Chord Vault v1.8.1 — PWA Update Fix
+# Chord Vault v1.9 — Live Sessions
 
-This maintenance release keeps all v1.8 features and changes how BandAid updates from GitHub Pages.
+BandAid / Chord Vault now connects Worship Leader cues between different phones through Supabase Realtime.
 
-## Update fix
+## New
+- Worship Leader can create a six-character live session.
+- Singers, Electric Guitar, Acoustic Guitar, Bass Guitar and Drum can join using the session code.
+- Worship cues are sent through Supabase and appear on other connected phones.
+- Anonymous Supabase authentication keeps each device identifiable without requiring band members to create accounts.
+- Worship Leader membership is protected server-side: joining users cannot self-assign the Worship Leader role.
+- Existing local preview cue transport remains as a same-device fallback.
 
-- App shell files (`index.html`, `app.js`, `styles.css`, and the web manifest) now use a **network-first** strategy, with cached copies used only as an offline fallback.
-- Icons remain cache-first because they change infrequently.
-- Service worker uses `skipWaiting()` and `clients.claim()` so a newly deployed worker can take control promptly.
-- Old BandAid/Chord Vault caches are removed without touching unrelated caches on `shannonmochizuki.github.io`.
-- Service worker registration uses `updateViaCache: "none"` and explicitly checks for an update.
-- App assets include a v1.8.1 cache-busting query so stale v1.8 files are less likely to survive a deployment.
-- Subtle on-screen version indicator is now **v1.8.1**.
+## Important setup step
+Before testing v1.9, run `supabase_v1_9_security.sql` once in the Supabase SQL Editor. This tightens the earlier membership policy and adds the secure session-creation function used by the app.
 
-## Preserved from v1.8
+## Hosting
+Configured for GitHub Pages at `/BandAid/`.
 
-- Worship Leader role.
-- Drum role.
-- Worship Leader cue buttons: Verse 1, Chorus, Bridge, Last Line, Build Up.
-- Same-browser live cue preview.
-- Singer Key Tester.
-- BPM, role picker, Backup & Restore, and existing song library format.
-- `/BandAid/` GitHub Pages/PWA scope.
-
-## Deployment
-
-Upload every file in this package to the root of the `BandAid` repository, replacing the existing v1.8 files. GitHub Pages remains `main` → `/(root)`.
-
-This release does not clear `localStorage`, so existing song data is preserved during a normal update.
+## Data
+Song library remains local to the browser/device. Backup & Restore remains available. Supabase is currently used only for live sessions/cues.
