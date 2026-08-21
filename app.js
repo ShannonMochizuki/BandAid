@@ -127,7 +127,7 @@ function saveEditor(){
   persist();
   activeRole = obj.role;
   localStorage.setItem("chordVaultActiveRole", activeRole);
-  qsa(".role-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.role === activeRole));
+  if($("currentRoleLabel")) $("currentRoleLabel").textContent = activeRole;
   renderLibrary();
   openReader(obj.id);
 }
@@ -201,11 +201,14 @@ function setActiveRole(role){
   if(!ROLES.includes(role)) return;
   activeRole = role;
   localStorage.setItem("chordVaultActiveRole", role);
-  qsa(".role-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.role === role));
+  if($("currentRoleLabel")) $("currentRoleLabel").textContent = role;
   renderLibrary();
+  showView("libraryView");
 }
-qsa(".role-tab").forEach(btn => btn.addEventListener("click",()=>setActiveRole(btn.dataset.role)));
-qsa(".role-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.role === activeRole));
+
+qsa(".role-card").forEach(card => card.addEventListener("click",()=>setActiveRole(card.dataset.role)));
+$("changeRoleBtn").addEventListener("click",()=>showView("roleView"));
+if($("currentRoleLabel")) $("currentRoleLabel").textContent = activeRole;
 
 $("newSongBtn").addEventListener("click",()=>openEditor());
 $("emptyAddBtn").addEventListener("click",()=>openEditor());
@@ -235,7 +238,7 @@ qsa(".reader-tab").forEach(btn=>btn.addEventListener("click",()=>{
 // v1.6 — Backup & Restore
 const BACKUP_FORMAT = "BandAid Chord Vault Backup";
 const BACKUP_SCHEMA_VERSION = 1;
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.7";
 let pendingRestore = null;
 
 function backupStatus(message, isError=false){
@@ -379,7 +382,7 @@ function finishRestore(mode){
     localStorage.setItem("chordVaultActiveRole", activeRole);
   }
   persist();
-  qsa(".role-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.role === activeRole));
+  if($("currentRoleLabel")) $("currentRoleLabel").textContent = activeRole;
   renderLibrary();
   $("restoreDialog").classList.add("hidden");
   pendingRestore = null;

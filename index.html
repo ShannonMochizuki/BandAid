@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Chord Vault v1.6 — Backup & Restore -->
+<!-- Chord Vault v1.7 — Role Picker UI -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -14,6 +14,8 @@
 </head>
 <body>
   <div id="app">
+    <div class="version-indicator" aria-label="App version">v1.7</div>
+
     <header class="topbar">
       <div>
         <div class="eyebrow">PERSONAL SONGBOOK</div>
@@ -26,12 +28,37 @@
     </header>
 
     <main>
-      <section id="libraryView" class="view active">
-        <div class="role-tabs" id="roleTabs" aria-label="User libraries">
-          <button class="role-tab active" data-role="Singers">Singers</button>
-          <button class="role-tab" data-role="Electric Guitar">Electric Guitar</button>
-          <button class="role-tab" data-role="Acoustic Guitar">Acoustic Guitar</button>
-          <button class="role-tab" data-role="Bass Guitar">Bass Guitar</button>
+      <section id="roleView" class="view active role-view">
+        <div class="role-welcome">
+          <div class="eyebrow">BANDAID</div>
+          <h2>What are you playing today?</h2>
+          <p>Choose your role to open the right song library.</p>
+        </div>
+        <div class="role-carousel" id="roleCarousel" aria-label="Choose a band role">
+          <button class="role-card" data-role="Singers">
+            <span class="role-art" aria-hidden="true">♪</span>
+            <span class="role-card-copy"><strong>Singers</strong><small>Lyrics, keys & cues</small></span>
+          </button>
+          <button class="role-card" data-role="Electric Guitar">
+            <span class="role-art role-art-guitar" aria-hidden="true">ϟ</span>
+            <span class="role-card-copy"><strong>Electric Guitar</strong><small>Chords, tabs & lead parts</small></span>
+          </button>
+          <button class="role-card" data-role="Acoustic Guitar">
+            <span class="role-art" aria-hidden="true">♬</span>
+            <span class="role-card-copy"><strong>Acoustic Guitar</strong><small>Chords, capo & rhythm</small></span>
+          </button>
+          <button class="role-card" data-role="Bass Guitar">
+            <span class="role-art" aria-hidden="true">𝄢</span>
+            <span class="role-card-copy"><strong>Bass Guitar</strong><small>Charts, tabs & grooves</small></span>
+          </button>
+        </div>
+        <div class="role-scroll-hint">Swipe left to browse roles →</div>
+      </section>
+
+      <section id="libraryView" class="view">
+        <div class="library-role-bar">
+          <button id="changeRoleBtn" class="ghost role-back">← Change role</button>
+          <div class="current-role"><span>Viewing</span><strong id="currentRoleLabel">Singers</strong></div>
         </div>
 
 

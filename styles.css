@@ -132,3 +132,51 @@ label input{margin-top:6px}
   .backup-actions button{flex:1 1 140px}
   .restore-options{grid-template-columns:1fr}
 }
+
+
+/* v1.7 — Role Picker + subtle version indicator */
+.version-indicator{
+  position:fixed;right:10px;bottom:8px;z-index:40;
+  font-size:.66rem;letter-spacing:.08em;color:var(--muted);opacity:.55;
+  pointer-events:none;user-select:none
+}
+.role-view{padding-top:6px}
+.role-welcome{padding:18px 2px 14px;max-width:560px}
+.role-welcome h2{font-size:1.85rem;margin:.28rem 0 .4rem}
+.role-welcome p{margin:0;color:var(--muted);line-height:1.5}
+.role-carousel{
+  display:flex;gap:16px;overflow-x:auto;overscroll-behavior-inline:contain;
+  scroll-snap-type:x mandatory;scroll-padding-inline:2px;
+  padding:10px 2px 18px;margin:2px -2px 0;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch
+}
+.role-carousel::-webkit-scrollbar{display:none}
+.role-card{
+  flex:0 0 clamp(210px,68vw,275px);aspect-ratio:3/4;
+  scroll-snap-align:start;position:relative;overflow:hidden;
+  border:1px solid var(--line);border-radius:26px;background:var(--card);
+  color:var(--ink);padding:0;text-align:left;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;justify-content:space-between;
+  transition:transform .16s ease,border-color .16s ease
+}
+.role-card:active{transform:scale(.985)}
+.role-art{
+  flex:1;display:grid;place-items:center;font-size:5.4rem;font-weight:300;
+  color:var(--ink);background:linear-gradient(180deg,#fff 0%,var(--soft) 100%)
+}
+.role-art-guitar{font-size:6.4rem}
+.role-card-copy{display:flex;flex-direction:column;gap:5px;padding:20px 18px 21px;background:#fff}
+.role-card-copy strong{font-size:1.08rem}
+.role-card-copy small{color:var(--muted);font-size:.8rem;line-height:1.35}
+.role-scroll-hint{font-size:.76rem;color:var(--muted);padding:0 2px 18px}
+.library-role-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-2px 0 14px}
+.role-back{padding-left:0}
+.current-role{text-align:right;display:flex;flex-direction:column;gap:2px}
+.current-role span{font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.current-role strong{font-size:.9rem}
+@media(max-width:700px){
+  .role-welcome{padding-top:8px}
+  .role-welcome h2{font-size:1.65rem}
+  .role-carousel{margin-right:-12px;padding-right:24px}
+  .role-card{flex-basis:min(74vw,255px)}
+}

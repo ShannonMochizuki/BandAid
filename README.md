@@ -1,8 +1,8 @@
-# Chord Vault v1.6 — Backup & Restore
+# Chord Vault v1.7 — Backup & Restore
 
 This release adds portable backup and restore to the BandAid version of Chord Vault while keeping the v1.5 `/BandAid/` PWA configuration intact.
 
-## New in v1.6
+## New in v1.7
 
 - **Export Backup** creates a dated `.json` file containing the complete BandAid song library.
 - Backups include song title, artist, role/instrument, key, capo, BPM, chord chart, tabs, chord shapes, notes, timestamps, and the active role.
@@ -25,10 +25,18 @@ This release adds portable backup and restore to the BandAid version of Chord Va
 - ID: `/BandAid/`
 - Start URL: `/BandAid/`
 - Scope: `/BandAid/`
-- Service-worker cache: `bandaid-chord-vault-v1.6`
+- Service-worker cache: `bandaid-chord-vault-v1.7`
 
 ## Install / update
 
 Upload every file in this ZIP to the root of the `BandAid` repository and replace the previous v1.5 files. GitHub Pages remains `main` branch → `/(root)`.
 
 Updating the app files does not intentionally delete the current song library. The new Backup & Restore feature is there so you can also keep a portable copy outside browser storage.
+
+
+## v1.7 — Role Picker UI
+- Added a first-entry role selection screen with vertically oriented role tiles in a horizontal swipe carousel.
+- Added a Change Role control in the library.
+- Replaced persistent role tabs with the role picker flow.
+- Added a subtle in-app v1.7 indicator.
+- Backup & Restore, BPM, role-specific libraries and BandAid PWA scope are preserved.
