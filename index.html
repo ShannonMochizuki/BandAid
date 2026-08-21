@@ -1,25 +1,28 @@
 <!doctype html>
-<!-- BandAid v2.2.0 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.2.1 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#111111" />
-  <title>Chord Vault</title>
+  <title>BandAid</title>
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.2.0">
-  <link rel="stylesheet" href="./styles.css?v=2.2.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.2.1">
+  <link rel="stylesheet" href="./styles.css?v=2.2.1">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.2.0</div>
+    <div class="version-indicator" aria-label="App version">v2.2.1</div>
 
     <header class="topbar">
-      <div>
-        <div class="eyebrow">PERSONAL SONGBOOK</div>
-        <h1>Chord Vault</h1>
+      <div class="brand-lockup" aria-label="BandAid">
+        <svg class="bandaid-mark" viewBox="0 0 64 72" role="img" aria-hidden="true">
+          <path d="M32 2C18 2 7 8 7 8v23c0 18 10 31 25 39 15-8 25-21 25-39V8S46 2 32 2Z" fill="currentColor"/>
+          <path d="M11 35h11l4-11 7 23 6-17 4 5h10" fill="none" stroke="white" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="brand-wordmark">BandAid</div>
       </div>
       <div class="top-actions">
         <div id="accountChip" class="account-chip hidden"><span id="accountName"></span><span id="adminBadge" class="admin-badge hidden">Admin</span><button id="accountBtn" class="ghost compact">Account</button><button id="adminBtn" class="ghost compact hidden">Admin</button><button id="logoutBtn" class="ghost compact">Log out</button></div>
@@ -449,6 +452,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.2.0"></script>
+  <script src="./app.js?v=2.2.1"></script>
 </body>
 </html>

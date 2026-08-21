@@ -319,3 +319,31 @@ label input{margin-top:6px}
   .saved-chord-form{grid-template-columns:1fr}
   .list-song-row{grid-template-columns:1fr}
 }
+
+/* v2.2.1 — top BandAid brand lockup only */
+.brand-lockup{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.bandaid-mark{
+  width:52px;
+  height:58px;
+  flex:0 0 auto;
+  color:var(--ink,#111);
+  display:block;
+}
+.brand-wordmark{
+  font-size:clamp(2rem,8vw,3.25rem);
+  line-height:.95;
+  font-weight:800;
+  letter-spacing:-.055em;
+  color:var(--ink,#111);
+  white-space:nowrap;
+}
+@media(max-width:560px){
+  .brand-lockup{gap:11px}
+  .bandaid-mark{width:44px;height:50px}
+  .brand-wordmark{font-size:2.35rem}
+}
