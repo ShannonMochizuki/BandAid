@@ -180,3 +180,46 @@ label input{margin-top:6px}
   .role-carousel{margin-right:-12px;padding-right:24px}
   .role-card{flex-basis:min(74vw,255px)}
 }
+
+/* v1.8 — Worship cues + Singer Key Tester */
+.live-cue-banner{
+  position:sticky;top:10px;z-index:35;margin:0 0 14px;padding:13px 15px;
+  border:1px solid var(--ink);border-radius:14px;background:var(--ink);color:#fff;
+  display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;box-shadow:var(--shadow)
+}
+.live-cue-kicker{font-size:.62rem;letter-spacing:.12em;font-weight:800;opacity:.72}
+.live-cue-banner strong{font-size:1.15rem;text-align:center}
+.live-cue-time{font-size:.72rem;opacity:.65}
+.cue-pulse{animation:cuePulse .42s ease}
+@keyframes cuePulse{0%{transform:scale(.985);opacity:.72}100%{transform:scale(1);opacity:1}}
+
+.worship-cue-panel{
+  background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)
+}
+.worship-cue-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.worship-cue-head h2{margin:.2rem 0 0;font-size:1.3rem}
+.cue-connection-badge{font-size:.68rem;border-radius:999px;background:var(--soft);padding:6px 9px;color:var(--muted);font-weight:800}
+.worship-cue-help{color:var(--muted);font-size:.86rem;line-height:1.5;margin:10px 0 14px}
+.cue-button-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cue-btn{border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:12px;padding:13px 9px;font-weight:800}
+.cue-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.last-cue-sent{margin-top:11px;color:var(--muted);font-size:.8rem}
+
+.key-tester{margin:18px 0 4px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--soft)}
+.key-tester-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.key-tester h3{margin:.2rem 0 0;font-size:1.1rem}
+.key-tester-note{font-size:.68rem;color:var(--muted);font-weight:700}
+.key-tester p{font-size:.84rem;color:var(--muted);line-height:1.5;margin:9px 0 12px}
+.key-tester-controls{display:grid;grid-template-columns:minmax(100px,150px) auto auto;gap:8px;align-items:end}
+.key-tester-controls label select{margin-top:6px}
+.key-test-progression{margin-top:11px;font-size:.82rem;color:#4d4a45;line-height:1.5}
+
+@media(max-width:700px){
+  .cue-button-grid{grid-template-columns:repeat(2,1fr)}
+  .cue-btn:last-child{grid-column:1/-1}
+  .live-cue-banner{grid-template-columns:1fr auto}
+  .live-cue-kicker{grid-column:1/-1}
+  .live-cue-banner strong{text-align:left}
+  .key-tester-controls{grid-template-columns:1fr 1fr}
+  .key-tester-controls label{grid-column:1/-1}
+}

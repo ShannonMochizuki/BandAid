@@ -5,7 +5,8 @@ let songs = loadSongs();
 let editingId = null;
 let readingId = null;
 let activeRole = localStorage.getItem("chordVaultActiveRole") || "Singers";
-const ROLES = ["Singers","Electric Guitar","Acoustic Guitar","Bass Guitar"];
+const ROLES = ["Worship Leader","Singers","Electric Guitar","Acoustic Guitar","Bass Guitar","Drum"];
+if(!ROLES.includes(activeRole)) activeRole = "Singers";
 
 const $ = (id) => document.getElementById(id);
 const qsa = (sel) => [...document.querySelectorAll(sel)];
@@ -128,6 +129,7 @@ function saveEditor(){
   activeRole = obj.role;
   localStorage.setItem("chordVaultActiveRole", activeRole);
   if($("currentRoleLabel")) $("currentRoleLabel").textContent = activeRole;
+updateRoleTools();
   renderLibrary();
   openReader(obj.id);
 }
@@ -162,6 +164,14 @@ function openReader(id){
   ).join("") : "No chord shapes saved.");
   qsa(".reader-tab").forEach((b,i)=>b.classList.toggle("active",i===0));
   qsa(".reader-panel").forEach((p,i)=>p.classList.toggle("active",i===0));
+  const tester = $("singerKeyTester");
+  if(tester){
+    tester.classList.toggle("hidden", activeRole !== "Singers");
+    const preferred = NOTE_INDEX[s.key] != null ? s.key : "C";
+    const select = $("testKeySelect");
+    if([...select.options].some(o=>o.value===preferred)) select.value = preferred;
+    $("keyTestProgression").textContent = keyTestProgression(s, select.value).join("  ·  ");
+  }
   showView("readerView");
 }
 function renderLibrary(){
@@ -202,6 +212,7 @@ function setActiveRole(role){
   activeRole = role;
   localStorage.setItem("chordVaultActiveRole", role);
   if($("currentRoleLabel")) $("currentRoleLabel").textContent = role;
+  updateRoleTools();
   renderLibrary();
   showView("libraryView");
 }
@@ -235,10 +246,152 @@ qsa(".reader-tab").forEach(btn=>btn.addEventListener("click",()=>{
 }));
 
 
+// v1.8 — Worship Leader live cues + Singer Key Tester
+const LIVE_CUE_KEY = "bandaidLiveCueV1";
+let cueChannel = null;
+try { cueChannel = new BroadcastChannel("bandaid-live-cues-v1"); } catch(e) {}
+
+function updateRoleTools(){
+  const worshipPanel = $("worshipCuePanel");
+  if(worshipPanel) worshipPanel.classList.toggle("hidden", activeRole !== "Worship Leader");
+  const banner = $("liveCueBanner");
+  if(banner && activeRole === "Worship Leader") banner.classList.add("hidden");
+}
+
+function showLiveCue(cue, source="Worship Leader"){
+  if(!cue || activeRole === "Worship Leader") return;
+  const banner = $("liveCueBanner");
+  if(!banner) return;
+  $("liveCueText").textContent = cue.label || cue;
+  $("liveCueTime").textContent = cue.sentAt ? new Date(cue.sentAt).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "now";
+  banner.classList.remove("hidden");
+  banner.classList.remove("cue-pulse");
+  void banner.offsetWidth;
+  banner.classList.add("cue-pulse");
+  if(navigator.vibrate) navigator.vibrate(80);
+}
+
+function sendLiveCue(label){
+  const cue = {label, sentAt:new Date().toISOString(), from:"Worship Leader"};
+  localStorage.setItem(LIVE_CUE_KEY, JSON.stringify(cue));
+  if(cueChannel) cueChannel.postMessage(cue);
+  const status = $("lastCueSent");
+  if(status) status.textContent = `Sent: ${label} · ${new Date(cue.sentAt).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`;
+  qsa(".cue-btn").forEach(btn=>btn.classList.toggle("active", btn.dataset.cue === label));
+}
+
+qsa(".cue-btn").forEach(btn => btn.addEventListener("click",()=>sendLiveCue(btn.dataset.cue)));
+if(cueChannel) cueChannel.addEventListener("message",event=>showLiveCue(event.data));
+window.addEventListener("storage",event=>{
+  if(event.key === LIVE_CUE_KEY && event.newValue){
+    try { showLiveCue(JSON.parse(event.newValue)); } catch(e) {}
+  }
+});
+
+const NOTE_INDEX = {"C":0,"C#":1,"Db":1,"D":2,"D#":3,"Eb":3,"E":4,"F":5,"F#":6,"Gb":6,"G":7,"G#":8,"Ab":8,"A":9,"A#":10,"Bb":10,"B":11,"Cb":11};
+const SHARP_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT_NAMES = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+let audioContext = null;
+let keyTestNodes = [];
+let keyTestTimers = [];
+
+function chordTokens(text=""){
+  const tokens = [];
+  const regex = /^(?:[A-G](?:#|b)?)(?:m|maj|min|dim|aug|sus|add)?(?:2|4|5|6|7|9|11|13)?(?:\([^)]*\))?(?:\/[A-G](?:#|b)?)?$/;
+  text.split(/\n/).forEach(line=>{
+    line.trim().split(/\s+/).forEach(token=>{
+      const clean = token.replace(/[|,:;]+$/g,"");
+      if(regex.test(clean)) tokens.push(clean);
+    });
+  });
+  return tokens.slice(0,8);
+}
+function parseRoot(chord){
+  const m = chord.match(/^([A-G](?:#|b)?)(.*)$/);
+  return m ? {root:m[1], suffix:m[2]} : null;
+}
+function transposeChord(chord, semitones, preferFlats=false){
+  const parsed = parseRoot(chord);
+  if(!parsed || NOTE_INDEX[parsed.root] == null) return chord;
+  const names = preferFlats ? FLAT_NAMES : SHARP_NAMES;
+  const idx = (NOTE_INDEX[parsed.root] + semitones + 120) % 12;
+  let suffix = parsed.suffix;
+  suffix = suffix.replace(/\/([A-G](?:#|b)?)/,(_,bass)=>{
+    if(NOTE_INDEX[bass] == null) return "/"+bass;
+    return "/"+names[(NOTE_INDEX[bass] + semitones + 120)%12];
+  });
+  return names[idx] + suffix;
+}
+function chordMidiNotes(chord){
+  const parsed = parseRoot(chord);
+  if(!parsed || NOTE_INDEX[parsed.root] == null) return [60,64,67];
+  const root = 60 + NOTE_INDEX[parsed.root];
+  const suffix = parsed.suffix.toLowerCase();
+  let intervals = [0,4,7];
+  if(/^m(?!aj)|min/.test(suffix)) intervals=[0,3,7];
+  if(suffix.includes("dim")) intervals=[0,3,6];
+  if(suffix.includes("aug")) intervals=[0,4,8];
+  if(suffix.includes("sus2")) intervals=[0,2,7];
+  if(suffix.includes("sus") || suffix.includes("sus4")) intervals=[0,5,7];
+  if(suffix.includes("7")) intervals.push(/^maj7/.test(suffix)?11:10);
+  return intervals.map(i=>root+i);
+}
+function midiFreq(note){ return 440 * Math.pow(2,(note-69)/12); }
+function stopKeyTest(){
+  keyTestTimers.forEach(clearTimeout); keyTestTimers=[];
+  keyTestNodes.forEach(node=>{ try{ node.stop?.(); node.disconnect?.(); }catch(e){} }); keyTestNodes=[];
+}
+function playChord(chord, when, duration){
+  if(!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const master = audioContext.createGain();
+  master.gain.setValueAtTime(0.0001, when);
+  master.gain.exponentialRampToValueAtTime(0.10, when+0.04);
+  master.gain.setValueAtTime(0.10, Math.max(when+0.05, when+duration-0.12));
+  master.gain.exponentialRampToValueAtTime(0.0001, when+duration);
+  master.connect(audioContext.destination);
+  keyTestNodes.push(master);
+  chordMidiNotes(chord).forEach((note,i)=>{
+    const osc = audioContext.createOscillator();
+    osc.type = i===0 ? "triangle" : "sine";
+    osc.frequency.setValueAtTime(midiFreq(note-12),when);
+    osc.connect(master); osc.start(when); osc.stop(when+duration+0.03); keyTestNodes.push(osc);
+  });
+}
+function keyTestProgression(song, targetKey){
+  const sourceKey = song?.key && NOTE_INDEX[song.key] != null ? song.key : "C";
+  const shift = NOTE_INDEX[targetKey] - NOTE_INDEX[sourceKey];
+  const preferFlats = targetKey.includes("b");
+  let chords = chordTokens(song?.chords || "");
+  if(!chords.length){
+    const base = ["C","G","Am","F"];
+    const srcShift = NOTE_INDEX[sourceKey];
+    chords = base.map(c=>transposeChord(c,srcShift,sourceKey.includes("b")));
+  }
+  return chords.slice(0,8).map(c=>transposeChord(c,shift,preferFlats));
+}
+async function playKeyTest(){
+  const song = songs.find(s=>s.id===readingId);
+  if(!song) return;
+  stopKeyTest();
+  const targetKey = $("testKeySelect").value;
+  const progression = keyTestProgression(song,targetKey);
+  $("keyTestProgression").textContent = progression.join("  ·  ");
+  if(!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioContext.state === "suspended") await audioContext.resume();
+  const bpm = Math.max(40,Math.min(220,Number(song.bpm)||72));
+  const chordDur = (60/bpm)*2;
+  const start = audioContext.currentTime + 0.05;
+  progression.forEach((chord,i)=>playChord(chord,start+i*chordDur,chordDur*0.95));
+}
+
+$("playKeyTestBtn").addEventListener("click",playKeyTest);
+$("stopKeyTestBtn").addEventListener("click",stopKeyTest);
+
+
 // v1.6 — Backup & Restore
 const BACKUP_FORMAT = "BandAid Chord Vault Backup";
 const BACKUP_SCHEMA_VERSION = 1;
-const APP_VERSION = "1.7";
+const APP_VERSION = "1.8";
 let pendingRestore = null;
 
 function backupStatus(message, isError=false){
@@ -383,6 +536,7 @@ function finishRestore(mode){
   }
   persist();
   if($("currentRoleLabel")) $("currentRoleLabel").textContent = activeRole;
+  updateRoleTools();
   renderLibrary();
   $("restoreDialog").classList.add("hidden");
   pendingRestore = null;

@@ -1,42 +1,21 @@
-# Chord Vault v1.7 — Backup & Restore
+# Chord Vault v1.8 — Worship Cues + Singer Key Tester
 
-This release adds portable backup and restore to the BandAid version of Chord Vault while keeping the v1.5 `/BandAid/` PWA configuration intact.
+This release keeps the BandAid GitHub Pages PWA configuration and all v1.7 song/backup features.
 
-## New in v1.7
+## New in v1.8
 
-- **Export Backup** creates a dated `.json` file containing the complete BandAid song library.
-- Backups include song title, artist, role/instrument, key, capo, BPM, chord chart, tabs, chord shapes, notes, timestamps, and the active role.
-- **Restore Backup** validates a selected JSON backup before changing local data.
-- Restore offers two choices:
-  - **Merge**: keep current songs and add/update songs from the backup. If the same song ID exists in both places, the newer `updatedAt` copy wins.
-  - **Replace**: replace the current BandAid library with the backup.
-- The export is deliberately limited to Chord Vault's own song data; it does not dump unrelated `localStorage` used by other apps on `shannonmochizuki.github.io`.
-- Backups include format/schema metadata so future BandAid versions can migrate older backup files safely.
+- Added **Worship Leader** role.
+- Added **Drum** role.
+- Worship Leader has cue buttons for **Verse 1, Chorus, Bridge, Last Line, Build Up**.
+- Cue UI includes a local same-origin preview using BroadcastChannel/localStorage. This lets multiple tabs/windows on the same browser profile demonstrate the live cue experience.
+- **Important:** true cross-device live cues require a shared realtime backend (for example Supabase Realtime or Firebase). No cloud credentials are bundled in this static GitHub Pages build.
+- Singers now get a **Key Tester** in the song reader. It reads the song key/chord chart and synthesizes a short chord accompaniment in a selected key.
+- The Key Tester is not the original recording and does not reproduce the vocal melody; it is a generated harmonic reference for testing comfortable keys.
+- Subtle version indicator updated to **v1.8**.
+- Backup/restore remains compatible and now accepts the Worship Leader and Drum roles.
 
-## Existing features retained
+## Deployment
 
-- Separate libraries for Singers, Electric Guitar, Acoustic Guitar, and Bass Guitar.
-- BPM field.
-- Song chords, guitar tabs, chord shapes, and performance notes.
-- Independent BandAid PWA identity and scope.
+Upload all files to the root of the `BandAid` repository. GitHub Pages should remain configured for `main` → `/(root)`.
 
-## PWA configuration
-
-- ID: `/BandAid/`
-- Start URL: `/BandAid/`
-- Scope: `/BandAid/`
-- Service-worker cache: `bandaid-chord-vault-v1.7`
-
-## Install / update
-
-Upload every file in this ZIP to the root of the `BandAid` repository and replace the previous v1.5 files. GitHub Pages remains `main` branch → `/(root)`.
-
-Updating the app files does not intentionally delete the current song library. The new Backup & Restore feature is there so you can also keep a portable copy outside browser storage.
-
-
-## v1.7 — Role Picker UI
-- Added a first-entry role selection screen with vertically oriented role tiles in a horizontal swipe carousel.
-- Added a Change Role control in the library.
-- Replaced persistent role tabs with the role picker flow.
-- Added a subtle in-app v1.7 indicator.
-- Backup & Restore, BPM, role-specific libraries and BandAid PWA scope are preserved.
+The PWA remains scoped to `/BandAid/` and uses the isolated cache `bandaid-chord-vault-v1.8`.
