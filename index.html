@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.1 — PIN Accounts + Admin Control + Master Library + Personal Copies -->
+<!-- Chord Vault v1.9.2 — Live Sessions -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.1">
-  <link rel="stylesheet" href="./styles.css?v=2.1">
+  <link rel="manifest" href="./manifest.webmanifest?v=1.9.2">
+  <link rel="stylesheet" href="./styles.css?v=1.9.2">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.1</div>
+    <div class="version-indicator" aria-label="App version">v1.9.2</div>
 
     <header class="topbar">
       <div>
@@ -22,35 +22,13 @@
         <h1>Chord Vault</h1>
       </div>
       <div class="top-actions">
-        <div id="accountChip" class="account-chip hidden"><span id="accountName"></span><span id="adminBadge" class="admin-badge hidden">Admin</span><button id="accountBtn" class="ghost compact">Account</button><button id="adminBtn" class="ghost compact hidden">Admin</button><button id="logoutBtn" class="ghost compact">Log out</button></div>
-        <button id="backupBtn" class="secondary hidden">Backup</button>
-        <button id="newSongBtn" class="primary hidden">+ New Song</button>
+        <button id="backupBtn" class="secondary">Backup & Restore</button>
+        <button id="newSongBtn" class="primary">+ New Song</button>
       </div>
     </header>
 
     <main>
-      <section id="authView" class="view active auth-view">
-        <div class="auth-card">
-          <div class="eyebrow">BANDAID ACCOUNT</div>
-          <h2>Your songs, your copy</h2>
-          <p>Sign in with a username and 6-digit PIN. BandAid uses an internal non-personal account identifier; no real email address is required.</p>
-          <div class="auth-tabs">
-            <button id="loginTabBtn" class="auth-tab active" type="button">Log in</button>
-            <button id="signupTabBtn" class="auth-tab" type="button">Create account</button>
-          </div>
-          <div class="auth-fields">
-            <label>Username<input id="authUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. shan"></label>
-            <label>6-digit PIN<input id="authPassword" type="password" inputmode="numeric" autocomplete="current-password" minlength="6" maxlength="6" pattern="[0-9]{6}" placeholder="••••••"></label>
-            <label id="confirmPasswordLabel" class="hidden">Confirm PIN<input id="authPasswordConfirm" type="password" inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}" placeholder="••••••"></label>
-            <label id="inviteCodeLabel" class="hidden">Beta access code<input id="authInviteCode" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ask the BandAid administrator"></label>
-          </div>
-          <button id="authSubmitBtn" class="primary auth-submit" type="button">Log in</button>
-          <div id="authStatus" class="auth-status"></div>
-          <p class="auth-footnote">New accounts require a beta access code from the BandAid administrator. New accounts require a beta access code. If you forget your PIN, the BandAid administrator can issue a temporary replacement PIN from the Admin dashboard.</p>
-        </div>
-      </section>
-
-      <section id="roleView" class="view role-view">
+      <section id="roleView" class="view active role-view">
         <div class="role-welcome">
           <div class="eyebrow">BANDAID</div>
           <h2>What are you playing today?</h2>
@@ -149,12 +127,11 @@
           <div class="backup-copy">
             <div class="eyebrow">DATA SAFETY</div>
             <h2>Backup & Restore</h2>
-            <p>Export your personal BandAid copies and legacy local songs. The shared Master Library is stored securely in Supabase.</p>
+            <p>Export your BandAid song library to a JSON file, or restore a previous backup. Backups include songs, roles, BPM, chords, tabs, chord shapes and notes.</p>
           </div>
           <div class="backup-actions">
             <button id="exportBackupBtn" class="primary">Export Backup</button>
-            <button id="importBackupBtn" class="secondary">Restore Legacy Backup</button>
-            <button id="importLocalMasterBtn" class="secondary hidden">Import Local Songs to Master</button>
+            <button id="importBackupBtn" class="secondary">Restore Backup</button>
             <button id="closeBackupBtn" class="ghost">Close</button>
             <input id="backupFileInput" type="file" accept="application/json,.json" hidden>
           </div>
@@ -184,7 +161,6 @@
       <section id="editorView" class="view">
         <div class="editor-head">
           <button class="ghost" id="backBtn">← Library</button>
-          <div id="editorModeBadge" class="edit-mode-badge">Official Master</div>
           <div class="editor-actions">
             <button class="ghost danger" id="deleteBtn">Delete</button>
             <button class="primary" id="saveBtn">Save</button>
@@ -255,10 +231,9 @@ E|----------------|"></textarea>
       <section id="readerView" class="view">
         <div class="editor-head">
           <button class="ghost" id="readerBackBtn">← Library</button>
-          <div class="reader-actions"><button class="secondary" id="copyToggleBtn">My Copy</button><button class="secondary" id="editBtn">Edit</button></div>
+          <button class="secondary" id="editBtn">Edit</button>
         </div>
         <article class="reader-card">
-          <div class="version-strip"><span id="versionModeLabel" class="version-mode-label">Official Master</span><span id="versionModeHelp">Read-only shared version</span></div>
           <div class="reader-title-row">
             <div>
               <div id="readerArtist" class="eyebrow"></div>
@@ -290,7 +265,7 @@ E|----------------|"></textarea>
           </section>
 
           <div class="reader-tabs">
-            <button class="reader-tab active" data-rpanel="readerChords">Chords + Lyrics</button>
+            <button class="reader-tab active" data-rpanel="readerChords">Chords</button>
             <button class="reader-tab" data-rpanel="readerTabs">Tabs</button>
             <button class="reader-tab" data-rpanel="readerShapes">Shapes</button>
             <button class="reader-tab" data-rpanel="readerNotes">Notes</button>
@@ -304,51 +279,6 @@ E|----------------|"></textarea>
       </section>
     </main>
 
-
-    <div id="accountDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
-      <div class="dialog-card">
-        <div class="eyebrow">ACCOUNT</div>
-        <h2 id="accountTitle">Change your PIN</h2>
-        <p id="accountDialogHelp" class="dialog-copy">Choose a new 6-digit numeric PIN.</p>
-        <div class="auth-fields">
-          <label>New PIN<input id="newPinInput" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="••••••"></label>
-          <label>Confirm new PIN<input id="newPinConfirmInput" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="••••••"></label>
-        </div>
-        <div id="accountDialogStatus" class="auth-status"></div>
-        <button id="saveNewPinBtn" class="primary auth-submit" type="button">Save new PIN</button>
-        <button id="closeAccountDialogBtn" class="ghost dialog-cancel" type="button">Cancel</button>
-      </div>
-    </div>
-
-    <div id="adminDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
-      <div class="dialog-card admin-dialog-card">
-        <div class="admin-dialog-head">
-          <div><div class="eyebrow">ADMIN</div><h2 id="adminTitle">BandAid control centre</h2></div>
-          <button id="closeAdminDialogBtn" class="ghost compact" type="button">Close</button>
-        </div>
-        <div class="admin-metrics">
-          <div class="admin-metric"><span>Active sessions</span><strong id="adminActiveCount">—</strong></div>
-          <div class="admin-metric"><span>Stale sessions</span><strong id="adminStaleCount">—</strong></div>
-          <div class="admin-metric"><span>Users</span><strong id="adminUserCount">—</strong></div>
-        </div>
-        <div class="admin-section">
-          <div class="admin-section-head"><div><div class="eyebrow">LIVE SESSIONS</div><h3>Current sessions</h3></div><button id="refreshAdminBtn" class="secondary compact" type="button">Refresh</button></div>
-          <p class="admin-help">A session is marked stale when the Worship Leader has not checked in for more than 3 minutes.</p>
-          <div id="adminSessionList" class="admin-list"></div>
-        </div>
-        <div class="admin-section">
-          <div class="eyebrow">USER PIN RESET</div>
-          <h3>Reset a tester's PIN</h3>
-          <p class="admin-help">Set a temporary 6-digit PIN. The user will be required to choose a new PIN after logging in.</p>
-          <div class="admin-reset-grid">
-            <select id="adminUserSelect" aria-label="Choose user"><option value="">Choose user…</option></select>
-            <input id="adminTempPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="Temporary PIN" aria-label="Temporary 6-digit PIN">
-            <button id="adminResetPinBtn" class="primary" type="button">Reset PIN</button>
-          </div>
-          <div id="adminStatus" class="auth-status"></div>
-        </div>
-      </div>
-    </div>
 
     <div id="restoreDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
       <div class="dialog-card">
@@ -385,6 +315,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.1"></script>
+  <script src="./app.js?v=1.9.2"></script>
 </body>
 </html>
