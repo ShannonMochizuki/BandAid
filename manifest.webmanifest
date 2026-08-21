@@ -2,7 +2,7 @@
   "id": "/BandAid/",
   "name": "Chord Vault",
   "short_name": "Chord Vault",
-  "description": "Store song chords, guitar tabs and chord shapes.",
+  "description": "BandAid worship-team song library, personal charts and live session cues.",
   "start_url": "/BandAid/",
   "scope": "/BandAid/",
   "display": "standalone",
