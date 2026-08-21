@@ -347,3 +347,78 @@ label input{margin-top:6px}
   .bandaid-mark{width:44px;height:50px}
   .brand-wordmark{font-size:2.35rem}
 }
+
+
+/* v2.2.3 — responsive top branding fix */
+@media(max-width:700px){
+  .topbar{
+    display:grid;
+    grid-template-columns:1fr;
+    align-items:start;
+    gap:14px;
+    padding:8px 0 24px;
+  }
+
+  .brand-lockup{
+    width:100%;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .bandaid-mark{
+    width:46px;
+    height:52px;
+    flex:0 0 46px;
+  }
+
+  .brand-wordmark{
+    font-size:2.55rem;
+    line-height:1;
+    letter-spacing:-.05em;
+    white-space:nowrap;
+    overflow:visible;
+  }
+
+  .top-actions{
+    width:100%;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+    align-items:stretch;
+  }
+
+  .account-chip{
+    grid-column:1/-1;
+    width:100%;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+    gap:6px;
+    padding:8px 10px;
+    border-radius:18px;
+  }
+
+  .account-chip #accountName,
+  .account-chip .admin-badge{
+    flex:0 0 auto;
+  }
+
+  .account-chip button{
+    flex:0 0 auto;
+  }
+
+  #listsBtn,
+  #chordLibraryBtn,
+  #backupBtn,
+  #newSongBtn{
+    width:100%;
+    min-height:54px;
+  }
+}
+
+@media(max-width:390px){
+  .bandaid-mark{width:42px;height:48px;flex-basis:42px}
+  .brand-wordmark{font-size:2.25rem}
+}
