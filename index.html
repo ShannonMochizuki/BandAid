@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- Chord Vault v1.5 — BandAid Migration -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <title>Chord Vault</title>
+  <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PERSONAL SONGBOOK</div>
+        <h1>Chord Vault</h1>
+      </div>
+      <button id="newSongBtn" class="primary">+ New Song</button>
+    </header>
+
+    <main>
+      <section id="libraryView" class="view active">
+        <div class="role-tabs" id="roleTabs" aria-label="User libraries">
+          <button class="role-tab active" data-role="Singers">Singers</button>
+          <button class="role-tab" data-role="Electric Guitar">Electric Guitar</button>
+          <button class="role-tab" data-role="Acoustic Guitar">Acoustic Guitar</button>
+          <button class="role-tab" data-role="Bass Guitar">Bass Guitar</button>
+        </div>
+
+        <div class="toolbar">
+          <input id="searchInput" type="search" placeholder="Search songs, artists, keys, BPM…" />
+          <select id="sortSelect">
+            <option value="updated">Recently edited</option>
+            <option value="title">Title A–Z</option>
+            <option value="artist">Artist A–Z</option>
+          </select>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div id="songList" class="song-list"></div>
+        <div id="emptyState" class="empty hidden">
+          <div class="empty-icon">♪</div>
+          <h2>No songs yet</h2>
+          <p>Add your first song and store chords, tabs and chord shapes together.</p>
+          <button class="primary" id="emptyAddBtn">Add a song</button>
+        </div>
+      </section>
+
+      <section id="editorView" class="view">
+        <div class="editor-head">
+          <button class="ghost" id="backBtn">← Library</button>
+          <div class="editor-actions">
+            <button class="ghost danger" id="deleteBtn">Delete</button>
+            <button class="primary" id="saveBtn">Save</button>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label>Song title<input id="songTitle" placeholder="e.g. Amazing Grace"></label>
+          <label>Artist<input id="songArtist" placeholder="e.g. Traditional"></label>
+          <label>User / instrument
+            <select id="songRole">
+              <option value="Singers">Singers</option>
+              <option value="Electric Guitar">Electric Guitar</option>
+              <option value="Acoustic Guitar">Acoustic Guitar</option>
+              <option value="Bass Guitar">Bass Guitar</option>
+            </select>
+          </label>
+          <label>Key<input id="songKey" placeholder="e.g. G"></label>
+          <label>Capo<input id="songCapo" placeholder="e.g. 2"></label>
+          <label>BPM<input id="songBpm" type="number" min="1" max="400" inputmode="numeric" placeholder="e.g. 72"></label>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-panel="chordsPanel">Song Chords</button>
+          <button class="tab" data-panel="tabsPanel">Tabs</button>
+          <button class="tab" data-panel="shapesPanel">Chord Shapes</button>
+          <button class="tab" data-panel="notesPanel">Notes</button>
+        </div>
+
+        <div id="chordsPanel" class="panel active">
+          <label class="stack-label">Chord chart / lyrics
+            <textarea id="songChords" rows="18" placeholder="[Verse 1]
+G              C
+Amazing grace, how sweet the sound
+G                 D
+That saved a wretch like me"></textarea>
+          </label>
+          <p class="hint">Use square brackets for section names. Chords can be placed above lyrics or written as progressions.</p>
+        </div>
+
+        <div id="tabsPanel" class="panel">
+          <label class="stack-label">Guitar tab
+            <textarea id="songTabs" rows="18" class="mono" placeholder="e|----------------|
+B|--3--3--1--0----|
+G|--------------2-|
+D|----------------|
+A|----------------|
+E|----------------|"></textarea>
+          </label>
+        </div>
+
+        <div id="shapesPanel" class="panel">
+          <div class="shape-toolbar">
+            <button class="secondary" id="addShapeBtn">+ Add chord shape</button>
+          </div>
+          <div id="shapeList"></div>
+        </div>
+
+        <div id="notesPanel" class="panel">
+          <label class="stack-label">Performance notes
+            <textarea id="songNotes" rows="14" placeholder="Intro cue, strumming pattern, lead line, dynamics, etc."></textarea>
+          </label>
+        </div>
+      </section>
+
+      <section id="readerView" class="view">
+        <div class="editor-head">
+          <button class="ghost" id="readerBackBtn">← Library</button>
+          <button class="secondary" id="editBtn">Edit</button>
+        </div>
+        <article class="reader-card">
+          <div class="reader-title-row">
+            <div>
+              <div id="readerArtist" class="eyebrow"></div>
+              <h2 id="readerTitle"></h2>
+            </div>
+            <div id="readerMeta" class="meta-pills"></div>
+          </div>
+
+          <div class="reader-tabs">
+            <button class="reader-tab active" data-rpanel="readerChords">Chords</button>
+            <button class="reader-tab" data-rpanel="readerTabs">Tabs</button>
+            <button class="reader-tab" data-rpanel="readerShapes">Shapes</button>
+            <button class="reader-tab" data-rpanel="readerNotes">Notes</button>
+          </div>
+
+          <div id="readerChords" class="reader-panel active"></div>
+          <div id="readerTabs" class="reader-panel mono"></div>
+          <div id="readerShapes" class="reader-panel"></div>
+          <div id="readerNotes" class="reader-panel"></div>
+        </article>
+      </section>
+    </main>
+
+    <template id="shapeTemplate">
+      <div class="shape-card">
+        <div class="shape-row">
+          <input class="shape-name" placeholder="Chord name, e.g. Fmaj7">
+          <button class="icon-btn remove-shape" title="Remove">×</button>
+        </div>
+        <div class="shape-row">
+          <input class="shape-frets mono" placeholder="Frets: x33210 or 1-3-3-2-1-1">
+          <input class="shape-fingers mono" placeholder="Fingers: x34210">
+        </div>
+        <div class="shape-preview"></div>
+      </div>
+    </template>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
