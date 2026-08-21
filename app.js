@@ -246,7 +246,7 @@ qsa(".reader-tab").forEach(btn=>btn.addEventListener("click",()=>{
 }));
 
 
-// v1.9.1 — Supabase live sessions + Worship Leader cues
+// v1.9.2 — Supabase live sessions + Worship Leader cues
 const SUPABASE_URL = "https://qxfcpkbggzhvqapzwflf.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_pXykwrt70vDqIGQdhmGMwQ_yz3KCUU5";
 const LIVE_SESSION_STORAGE_KEY = "bandaidLiveSessionV1";
@@ -621,7 +621,7 @@ $("stopKeyTestBtn").addEventListener("click",stopKeyTest);
 // v1.6 — Backup & Restore
 const BACKUP_FORMAT = "BandAid Chord Vault Backup";
 const BACKUP_SCHEMA_VERSION = 1;
-const APP_VERSION = "1.9.1";
+const APP_VERSION = "1.9.2";
 let pendingRestore = null;
 
 function backupStatus(message, isError=false){
@@ -790,7 +790,7 @@ document.addEventListener("keydown",event=>{ if(event.key === "Escape" && !$("re
 if("serviceWorker" in navigator){
   window.addEventListener("load", async ()=>{
     try{
-      const registration = await navigator.serviceWorker.register("./sw.js?v=1.9.1", {scope:"./", updateViaCache:"none"});
+      const registration = await navigator.serviceWorker.register("./sw.js?v=1.9.2", {scope:"./", updateViaCache:"none"});
       await registration.update();
     }catch(_err){}
   });

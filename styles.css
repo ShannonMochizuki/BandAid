@@ -136,9 +136,10 @@ label input{margin-top:6px}
 
 /* v1.7 — Role Picker + subtle version indicator */
 .version-indicator{
-  position:fixed;right:10px;bottom:8px;z-index:40;
-  font-size:.66rem;letter-spacing:.08em;color:var(--muted);opacity:.55;
-  pointer-events:none;user-select:none
+  position:fixed;left:50%;bottom:max(8px, env(safe-area-inset-bottom));z-index:40;
+  transform:translateX(-50%);
+  font-size:.66rem;letter-spacing:.08em;color:var(--muted);opacity:.48;
+  pointer-events:none;user-select:none;white-space:nowrap
 }
 .role-view{padding-top:6px}
 .role-welcome{padding:18px 2px 14px;max-width:560px}

@@ -1,4 +1,4 @@
-# Chord Vault v1.9.1 — Leader Exit Safety
+# Chord Vault v1.9.2 — Leader Exit Safety + Centered Version
 
 Feature update for the BandAid GitHub Pages PWA.
 
@@ -13,3 +13,9 @@ Feature update for the BandAid GitHub Pages PWA.
 Before deploying/testing this version, run `supabase_v1_9_1_leader_exit.sql` once in the Supabase SQL Editor.
 
 This release keeps the /BandAid/ PWA scope, v1.9 live cues, role picker, Singer Key Tester, BPM, and Backup & Restore.
+
+
+## v1.9.2 UI adjustment
+- Moves the subtle version indicator from the bottom-right to the bottom-center.
+- Uses the device safe-area inset so it remains visible on iPhone/iOS layouts.
+- No database migration is required from v1.9.1.
