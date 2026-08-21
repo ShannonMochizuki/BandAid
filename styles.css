@@ -286,3 +286,10 @@ label input{margin-top:6px}
   .admin-reset-grid{grid-template-columns:1fr}.admin-session-row{grid-template-columns:1fr}.admin-session-row button{width:100%}
   .account-chip{flex-wrap:wrap}
 }
+
+/* v2.1.5 chord transposer */
+.transpose-tool{margin:18px 0 8px;padding:16px;border:1px solid var(--line,#ddd9d1);border-radius:20px;background:rgba(240,237,231,.72);display:flex;gap:14px;align-items:end;justify-content:space-between;flex-wrap:wrap}
+.transpose-tool-copy{min-width:150px}.transpose-tool-copy strong{display:block;margin-top:4px}
+.transpose-tool-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap;flex:1;justify-content:flex-end}
+.transpose-tool-controls label{min-width:135px;flex:1;max-width:180px}.transpose-tool-controls select{width:100%;margin-top:6px}
+@media(max-width:560px){.transpose-tool-controls{justify-content:stretch}.transpose-tool-controls label{max-width:none;flex-basis:100%}.transpose-tool-controls button{flex:1}}
