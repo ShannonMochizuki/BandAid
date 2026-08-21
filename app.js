@@ -4,13 +4,15 @@ const LEGACY_STORAGE_KEY = "chordVaultSongsV1";
 const MASTER_CACHE_KEY = "bandaidMasterSongsV2";
 const LIVE_SESSION_STORAGE_KEY = "bandaidLiveSessionV1";
 const LIVE_CUE_KEY = "bandaidLiveCueV1";
-const USER_DOMAIN = "bandaid.example.com";
+const ACCOUNT_TOKEN_KEY = "bandaidAccountTokenV213";
 const ROLES = ["Worship Leader","Singers","Electric Guitar","Acoustic Guitar","Bass Guitar","Drum"];
 
 const $ = id => document.getElementById(id);
 const qsa = sel => [...document.querySelectorAll(sel)];
 let supabaseClient = null;
 let currentUser = null;
+let transportUser = null;
+let accountToken = localStorage.getItem(ACCOUNT_TOKEN_KEY) || "";
 let currentProfile = null;
 let isAdmin = false;
 let masterSongs = [];
@@ -41,7 +43,6 @@ function roleSlug(role){
   return ({"Worship Leader":"worship-leader","Singers":"singer","Electric Guitar":"electric-guitar","Acoustic Guitar":"acoustic-guitar","Bass Guitar":"bass-guitar","Drum":"drum"})[role] || "singer";
 }
 function normalizeUsername(raw){ return raw.trim().toLowerCase().replace(/[^a-z0-9_]/g,""); }
-function syntheticEmail(username){ return `${username}@${USER_DOMAIN}`; }
 function legacySongs(){
   try{
     const rows=JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY)||"[]");
@@ -84,6 +85,16 @@ function setAuthMode(mode){
   $("authPassword").autocomplete=mode==="signup"?"new-password":"current-password";
   setAuthStatus("");
 }
+async function ensureTransportAuth(){
+  initSupabase();
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  if(session?.user){ transportUser=session.user; return transportUser; }
+  const {data,error}=await supabaseClient.auth.signInAnonymously();
+  if(error) throw error;
+  transportUser=data?.user||data?.session?.user||null;
+  if(!transportUser) throw new Error("Could not establish a secure BandAid connection.");
+  return transportUser;
+}
 async function submitAuth(){
   const username=normalizeUsername($("authUsername").value);
   const password=$("authPassword").value;
@@ -93,25 +104,23 @@ async function submitAuth(){
   const inviteCode=authMode==="signup" ? $("authInviteCode").value.trim() : "";
   if(authMode==="signup" && !inviteCode) return setAuthStatus("Enter the beta access code provided by the BandAid administrator.",true);
   try{
-    initSupabase(); setAuthStatus(authMode==="signup"?"Creating account…":"Signing in…");
-    let result;
-    if(authMode==="signup"){
-      result=await supabaseClient.auth.signUp({email:syntheticEmail(username),password,options:{data:{username,display_username:username,beta_invite_code:inviteCode}}});
-    }else{
-      result=await supabaseClient.auth.signInWithPassword({email:syntheticEmail(username),password});
-    }
-    if(result.error) throw result.error;
-    if(!result.data?.session){
-      throw new Error("Account created but no session was returned. In Supabase, turn OFF Authentication → Email → Confirm email for username-only accounts.");
-    }
-    await enterAuthenticatedApp(result.data.user);
+    await ensureTransportAuth();
+    setAuthStatus(authMode==="signup"?"Creating account…":"Signing in…");
+    const fn=authMode==="signup"?"bandaid_signup":"bandaid_login";
+    const args=authMode==="signup"?{p_username:username,p_pin:password,p_beta_code:inviteCode}:{p_username:username,p_pin:password};
+    const {data,error}=await supabaseClient.rpc(fn,args);
+    if(error) throw error;
+    if(!data?.ok) throw new Error(data?.error||"Could not sign in.");
+    accountToken=data.token;
+    localStorage.setItem(ACCOUNT_TOKEN_KEY,accountToken);
+    await enterAuthenticatedApp({id:data.id,username:data.username,display_username:data.display_username,is_admin:data.is_admin,pin_reset_required:data.pin_reset_required});
   }catch(err){ setAuthStatus(err.message||"Could not sign in.",true); }
 }
 async function enterAuthenticatedApp(user){
   currentUser=user;
-  if(user?.is_anonymous){ await supabaseClient.auth.signOut(); currentUser=null; return showView("authView"); }
-  await loadProfile();
-  $("accountName").textContent=currentProfile?.display_username||currentProfile?.username||"User";
+  currentProfile={id:user.id,username:user.username,display_username:user.display_username,is_admin:!!user.is_admin,pin_reset_required:!!user.pin_reset_required};
+  isAdmin=!!currentProfile.is_admin;
+  $("accountName").textContent=currentProfile.display_username||currentProfile.username||"User";
   $("accountChip").classList.remove("hidden");
   $("adminBadge").classList.toggle("hidden",!isAdmin);
   $("adminBtn")?.classList.toggle("hidden",!isAdmin);
@@ -127,24 +136,33 @@ async function enterAuthenticatedApp(user){
   if(currentProfile?.pin_reset_required) openAccountDialog(true);
 }
 async function loadProfile(){
-  const {data,error}=await supabaseClient.from("profiles").select("id,username,display_username,is_admin,pin_reset_required").eq("id",currentUser.id).maybeSingle();
+  if(!accountToken) throw new Error("Please log in again.");
+  const {data,error}=await supabaseClient.rpc("bandaid_me",{p_token:accountToken});
   if(error) throw error;
-  currentProfile=data;
-  isAdmin=!!data?.is_admin;
+  if(!data?.ok) throw new Error(data?.error||"Session expired");
+  currentUser={id:data.id,username:data.username,display_username:data.display_username,is_admin:data.is_admin,pin_reset_required:data.pin_reset_required};
+  currentProfile={...currentUser}; isAdmin=!!data.is_admin;
 }
 async function logout(){
   try{ if(liveSession) await leaveLiveSession(); }catch(e){}
-  await supabaseClient.auth.signOut();
+  try{ if(accountToken) await supabaseClient.rpc("bandaid_logout",{p_token:accountToken}); }catch(e){}
+  accountToken=""; localStorage.removeItem(ACCOUNT_TOKEN_KEY);
   currentUser=null; currentProfile=null; isAdmin=false; masterSongs=[]; personalCopies=new Map();
   $("accountChip").classList.add("hidden"); $("backupBtn").classList.add("hidden"); $("newSongBtn").classList.add("hidden");
   showView("authView");
 }
 async function bootstrapAuth(){
   try{
-    initSupabase();
-    const {data:{session}}=await supabaseClient.auth.getSession();
-    if(session?.user && !session.user.is_anonymous) await enterAuthenticatedApp(session.user);
-    else { if(session?.user?.is_anonymous) await supabaseClient.auth.signOut(); showView("authView"); }
+    await ensureTransportAuth();
+    if(accountToken){
+      const {data,error}=await supabaseClient.rpc("bandaid_me",{p_token:accountToken});
+      if(!error && data?.ok){
+        await enterAuthenticatedApp({id:data.id,username:data.username,display_username:data.display_username,is_admin:data.is_admin,pin_reset_required:data.pin_reset_required});
+        return;
+      }
+      accountToken=""; localStorage.removeItem(ACCOUNT_TOKEN_KEY);
+    }
+    showView("authView");
   }catch(err){ setAuthStatus(`Could not connect to BandAid: ${err.message}`,true); showView("authView"); }
 }
 
@@ -154,16 +172,14 @@ async function loadSongLibrary(){
   loadCachedCloudData(); renderLibrary();
   try{
     const [m,c]=await Promise.all([
-      supabaseClient.from("master_songs").select("*").order("updated_at",{ascending:false}),
-      supabaseClient.from("user_song_copies").select("*").eq("user_id",currentUser.id)
+      supabaseClient.rpc("bandaid_list_master_songs",{p_token:accountToken}),
+      supabaseClient.rpc("bandaid_list_personal_copies",{p_token:accountToken})
     ]);
     if(m.error) throw m.error; if(c.error) throw c.error;
     masterSongs=(m.data||[]).map(fromMasterRow);
     personalCopies=new Map((c.data||[]).map(fromCopyRow).map(x=>[x.song_id,x]));
     cacheCloudData(); renderLibrary();
-  }catch(err){
-    if(!masterSongs.length) alert(`Could not load the shared song library: ${err.message}`);
-  }
+  }catch(err){ if(!masterSongs.length) alert(`Could not load the shared song library: ${err.message}`); }
 }
 function normalizeFrets(raw=""){ raw=raw.trim(); if(!raw)return[]; if(raw.includes("-")||raw.includes(" "))return raw.split(/[-\s,]+/).filter(Boolean); return raw.split(""); }
 function makeDiagram(name,fretsRaw,fingersRaw){
@@ -214,18 +230,17 @@ async function saveEditor(){
     const title=$("songTitle").value.trim(); if(!title){alert("Please enter a song title.");return;}
     if(editingKind==="master"){
       if(!isAdmin) throw new Error("Only the BandAid administrator can edit the Master Library.");
-      const payload={title,artist:$("songArtist").value.trim(),role:$("songRole").value,song_key:$("songKey").value.trim(),capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:$("songChords").value,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes(),created_by:currentUser.id};
-      let res;
-      if(editingId) res=await supabaseClient.from("master_songs").update(payload).eq("id",editingId).select().single();
-      else res=await supabaseClient.from("master_songs").insert(payload).select().single();
-      if(res.error) throw res.error;
-      const saved=fromMasterRow(res.data); const idx=masterSongs.findIndex(s=>s.id===saved.id); if(idx>=0)masterSongs[idx]=saved;else masterSongs.unshift(saved);
+      const payload={id:editingId||"",title,artist:$("songArtist").value.trim(),role:$("songRole").value,song_key:$("songKey").value.trim(),capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:$("songChords").value,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
+      const {data,error}=await supabaseClient.rpc("bandaid_save_master_song",{p_token:accountToken,p_payload:payload});
+      if(error) throw error; if(data?.ok===false) throw new Error(data.error);
+      const saved=fromMasterRow(data); const idx=masterSongs.findIndex(s=>s.id===saved.id); if(idx>=0)masterSongs[idx]=saved;else masterSongs.unshift(saved);
       activeRole=saved.role; localStorage.setItem("chordVaultActiveRole",activeRole); cacheCloudData(); renderLibrary(); openReader(saved.id);
     }else{
       const master=masterSongs.find(s=>s.id===editingMasterId); if(!master)throw new Error("Master song not found.");
-      const payload={user_id:currentUser.id,song_id:master.id,song_key:$("songKey").value.trim(),capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:$("songChords").value,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
-      const res=await supabaseClient.from("user_song_copies").upsert(payload,{onConflict:"user_id,song_id"}).select().single(); if(res.error)throw res.error;
-      personalCopies.set(master.id,fromCopyRow(res.data)); cacheCloudData(); readingMode="mine"; renderLibrary(); openReader(master.id,"mine");
+      const payload={song_key:$("songKey").value.trim(),capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:$("songChords").value,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
+      const {data,error}=await supabaseClient.rpc("bandaid_save_personal_copy",{p_token:accountToken,p_song_id:master.id,p_payload:payload});
+      if(error)throw error;if(data?.ok===false)throw new Error(data.error);
+      personalCopies.set(master.id,fromCopyRow(data)); cacheCloudData(); readingMode="mine"; renderLibrary(); openReader(master.id,"mine");
     }
   }catch(err){ alert(`Could not save: ${err.message}`); }
 }
@@ -234,10 +249,10 @@ async function deleteEditing(){
   try{
     if(editingKind==="master"){
       if(!isAdmin)return; const master=masterSongs.find(s=>s.id===editingId); if(!confirm(`Delete official song “${master?.title||"this song"}”? This also removes all users’ personal copies.`))return;
-      const {error}=await supabaseClient.from("master_songs").delete().eq("id",editingId); if(error)throw error; masterSongs=masterSongs.filter(s=>s.id!==editingId); personalCopies.delete(editingId);
+      const {data,error}=await supabaseClient.rpc("bandaid_delete_master_song",{p_token:accountToken,p_song_id:editingId}); if(error)throw error; masterSongs=masterSongs.filter(s=>s.id!==editingId); personalCopies.delete(editingId);
     }else{
       const master=masterSongs.find(s=>s.id===editingMasterId); if(!confirm(`Delete your private copy of “${master?.title||"this song"}”? The official song will remain.`))return;
-      const {error}=await supabaseClient.from("user_song_copies").delete().eq("id",editingId).eq("user_id",currentUser.id); if(error)throw error; personalCopies.delete(editingMasterId);
+      const {error}=await supabaseClient.rpc("bandaid_delete_personal_copy",{p_token:accountToken,p_song_id:editingMasterId}); if(error)throw error; personalCopies.delete(editingMasterId);
     }
     cacheCloudData(); renderLibrary(); showView("libraryView");
   }catch(err){ alert(`Could not delete: ${err.message}`); }
@@ -262,8 +277,9 @@ async function togglePersonalCopy(){
   if(readingMode==="mine"){ readingMode="official"; return renderReader(master,readingMode); }
   if(!personalCopies.has(master.id)){
     try{
-      const payload={user_id:currentUser.id,song_id:master.id,song_key:master.key,capo:master.capo,bpm:master.bpm,chords:master.chords,tabs:master.tabs,notes:master.notes,shapes:master.shapes||[]};
-      const {data,error}=await supabaseClient.from("user_song_copies").insert(payload).select().single(); if(error)throw error; personalCopies.set(master.id,fromCopyRow(data)); cacheCloudData(); renderLibrary();
+      const payload={song_key:master.key,capo:master.capo,bpm:master.bpm,chords:master.chords,tabs:master.tabs,notes:master.notes,shapes:master.shapes||[]};
+      const {data,error}=await supabaseClient.rpc("bandaid_save_personal_copy",{p_token:accountToken,p_song_id:master.id,p_payload:payload}); if(error)throw error;
+      personalCopies.set(master.id,fromCopyRow(data)); cacheCloudData(); renderLibrary();
     }catch(err){ return alert(`Could not create your copy: ${err.message}`); }
   }
   readingMode="mine"; renderReader(master,readingMode);
@@ -296,7 +312,7 @@ function renderLiveSessionUI(){
 }
 function updateRoleTools(){ $("worshipCuePanel")?.classList.toggle("hidden",activeRole!=="Worship Leader"); if(activeRole==="Worship Leader")$("liveCueBanner")?.classList.add("hidden"); renderLiveSessionUI(); }
 function showLiveCue(cue){ if(!cue||activeRole==="Worship Leader")return; const banner=$("liveCueBanner"); if(!banner)return; const label=cue.label||cue.cue||cue; $("liveCueText").textContent=label; const sentAt=cue.sentAt||cue.created_at; $("liveCueTime").textContent=sentAt?new Date(sentAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"now"; banner.classList.remove("hidden","cue-pulse");void banner.offsetWidth;banner.classList.add("cue-pulse");if(navigator.vibrate)navigator.vibrate(80); }
-function requireUser(){ if(!currentUser)throw new Error("Please log in first."); return currentUser; }
+function requireUser(){ if(!currentUser)throw new Error("Please log in first."); if(!transportUser)throw new Error("Live connection unavailable."); return transportUser; }
 async function subscribeToLiveSession(){
   if(!liveSession?.id)return; if(realtimeChannel){try{await supabaseClient.removeChannel(realtimeChannel);}catch(e){}}
   realtimeChannel=supabaseClient.channel(`bandaid-session-${liveSession.id}`)
@@ -316,7 +332,7 @@ function startLeaderHeartbeat(){
   sendLeaderHeartbeat();
   leaderHeartbeatTimer=setInterval(sendLeaderHeartbeat,60000);
 }
-async function createLiveSession(){ try{setSessionStatus("Creating live session…","connecting");const user=requireUser();let lastError=null;for(let i=0;i<4;i++){const code=makeSessionCode();const {data,error}=await supabaseClient.rpc("create_band_session",{session_code:code});if(!error&&data){saveLiveSession({id:data,code,role:"worship-leader",userId:user.id});await subscribeToLiveSession();startLeaderHeartbeat();return;}lastError=error;if(!String(error?.message||"").toLowerCase().includes("duplicate"))break;}throw lastError||new Error("Could not create session.");}catch(err){setSessionStatus(`Could not create session: ${err.message}`,"error");} }
+async function createLiveSession(){ try{setSessionStatus("Creating live session…","connecting");const user=requireUser();let lastError=null;for(let i=0;i<4;i++){const code=makeSessionCode();const {data,error}=await supabaseClient.rpc("create_band_session",{session_code:code,account_token:accountToken});if(!error&&data){saveLiveSession({id:data,code,role:"worship-leader",userId:user.id});await subscribeToLiveSession();startLeaderHeartbeat();return;}lastError=error;if(!String(error?.message||"").toLowerCase().includes("duplicate"))break;}throw lastError||new Error("Could not create session.");}catch(err){setSessionStatus(`Could not create session: ${err.message}`,"error");} }
 async function joinLiveSession(){const code=$("sessionCodeInput").value.trim().toUpperCase();if(!code)return $("sessionCodeInput").focus();if(activeRole==="Worship Leader")return;try{setSessionStatus("Joining session…","connecting");const user=requireUser();const {data,error}=await supabaseClient.rpc("join_band_session",{join_code:code,selected_role:roleSlug(activeRole)});if(error)throw error;saveLiveSession({id:data,code,role:roleSlug(activeRole),userId:user.id});await subscribeToLiveSession();}catch(err){setSessionStatus(err.message?.includes("Session not found")?"Session code not found.":`Could not join: ${err.message}`,"error");}}
 async function leaveLiveSession(){stopLeaderHeartbeat();const s=liveSession;if(!s){saveLiveSession(null);return;}try{requireUser();const {data,error}=await supabaseClient.rpc("leave_band_session",{target_session:s.id});if(error)throw error;if(data==="ended")setSessionStatus("Live session ended for everyone.","error");}catch(err){setSessionStatus(`Could not leave session: ${err.message}`,"error");return;}if(realtimeChannel){try{await supabaseClient.removeChannel(realtimeChannel);}catch(e){}}realtimeChannel=null;saveLiveSession(null);}
 async function sendLiveCue(label){const cue={label,sentAt:new Date().toISOString(),from:"Worship Leader"};localStorage.setItem(LIVE_CUE_KEY,JSON.stringify(cue));if(cueChannel)cueChannel.postMessage(cue);if(!liveSession)return setSessionStatus("Create a live session before sending cues.","error");try{const user=requireUser();const {error}=await supabaseClient.from("worship_cues").insert({session_id:liveSession.id,cue:label,created_by:user.id});if(error)throw error;$("lastCueSent").textContent=`Sent: ${label} · ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`;qsa(".cue-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.cue===label));}catch(err){setSessionStatus(`Cue failed: ${err.message}`,"error");}}
@@ -339,8 +355,7 @@ async function saveOwnPin(){
   if(pin!==confirmPin) return setDialogStatus("accountDialogStatus","PINs do not match.",true);
   try{
     setDialogStatus("accountDialogStatus","Saving new PIN…");
-    const {error}=await supabaseClient.auth.updateUser({password:pin}); if(error)throw error;
-    const cleared=await supabaseClient.rpc("clear_pin_reset_required"); if(cleared.error)throw cleared.error;
+    const {data,error}=await supabaseClient.rpc("bandaid_change_pin",{p_token:accountToken,p_new_pin:pin}); if(error)throw error; if(!data?.ok)throw new Error(data?.error||"Could not update PIN.");
     currentProfile.pin_reset_required=false; setDialogStatus("accountDialogStatus","PIN updated.");
     $("closeAccountDialogBtn")?.classList.remove("hidden"); setTimeout(()=>$("accountDialog")?.classList.add("hidden"),450);
   }catch(err){setDialogStatus("accountDialogStatus",err.message||"Could not update PIN.",true);}
@@ -352,12 +367,12 @@ async function refreshAdminDashboard(){
   if(!isAdmin)return;
   setDialogStatus("adminStatus","Loading…");
   try{
-    const [sessionsRes,usersRes]=await Promise.all([supabaseClient.rpc("admin_list_live_sessions"),supabaseClient.rpc("admin_list_users")]);
+    const [sessionsRes,usersRes]=await Promise.all([supabaseClient.rpc("bandaid_admin_live_sessions",{p_token:accountToken}),supabaseClient.rpc("bandaid_admin_list_users",{p_token:accountToken})]);
     if(sessionsRes.error)throw sessionsRes.error;if(usersRes.error)throw usersRes.error;
     const sessions=sessionsRes.data||[],users=usersRes.data||[];
     $("adminActiveCount").textContent=sessions.length;$("adminStaleCount").textContent=sessions.filter(x=>x.is_stale).length;$("adminUserCount").textContent=users.length;
     $("adminSessionList").innerHTML=sessions.length?sessions.map(x=>`<div class="admin-session-row" data-session-id="${safeId(x.session_id)}"><div class="admin-session-main"><div><span class="admin-session-code">${esc(x.code)}</span> <span class="admin-session-status ${x.is_stale?'stale':''}">${x.is_stale?'STALE':'LIVE'}</span></div><div class="admin-session-meta">Leader: ${esc(x.leader_username||'Unknown')} · ${Number(x.member_count||0)} member${Number(x.member_count||0)===1?'':'s'} · started ${new Date(x.created_at).toLocaleString()} · leader seen ${fmtAgo(x.leader_last_seen)}</div></div><button class="secondary compact admin-end-session" type="button">End session</button></div>`).join(""):'<div class="admin-help">No active sessions.</div>';
-    qsa(".admin-end-session").forEach(btn=>btn.addEventListener("click",async()=>{const row=btn.closest(".admin-session-row");if(!row||!confirm("End this live session for everyone?"))return;btn.disabled=true;const r=await supabaseClient.rpc("admin_end_band_session",{target_session:row.dataset.sessionId});if(r.error){alert(r.error.message);btn.disabled=false;}else refreshAdminDashboard();}));
+    qsa(".admin-end-session").forEach(btn=>btn.addEventListener("click",async()=>{const row=btn.closest(".admin-session-row");if(!row||!confirm("End this live session for everyone?"))return;btn.disabled=true;const r=await supabaseClient.rpc("bandaid_admin_end_session",{p_token:accountToken,p_session_id:row.dataset.sessionId});if(r.error){alert(r.error.message);btn.disabled=false;}else refreshAdminDashboard();}));
     const select=$("adminUserSelect");select.innerHTML='<option value="">Choose user…</option>'+users.filter(u=>!u.is_admin).map(u=>`<option value="${safeId(u.id)}">${esc(u.username)}${u.pin_reset_required?' · reset pending':''}</option>`).join("");
     setDialogStatus("adminStatus","");
   }catch(err){setDialogStatus("adminStatus",err.message||"Could not load admin dashboard.",true);}
@@ -369,7 +384,7 @@ async function adminResetPin(){
   if(!confirm("Reset this user's PIN? They will be required to choose a new PIN after logging in."))return;
   try{
     setDialogStatus("adminStatus","Resetting PIN…");
-    const {data,error}=await supabaseClient.functions.invoke("admin-reset-pin",{body:{user_id:userId,new_pin:pin}});if(error)throw error;if(data?.error)throw new Error(data.error);
+    const {data,error}=await supabaseClient.rpc("bandaid_admin_reset_pin",{p_token:accountToken,p_user_id:userId,p_new_pin:pin});if(error)throw error;if(!data?.ok)throw new Error(data?.error||"PIN reset failed.");
     $("adminTempPin").value="";await refreshAdminDashboard();setDialogStatus("adminStatus","Temporary PIN set. Give it to the user privately.");
   }catch(err){setDialogStatus("adminStatus",err.message||"PIN reset failed. Make sure the admin-reset-pin Edge Function is deployed.",true);}
 }
@@ -388,12 +403,12 @@ async function playKeyTest(){const master=masterSongs.find(s=>s.id===readingId);
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.1.2",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.1.3",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
   backupStatus("Importing local songs…");let ok=0;
-  for(const s of rows){const payload={legacy_id:String(s.id||`${s.title}-${s.artist}-${s.role}`),title:s.title||"Untitled",artist:s.artist||"",role:ROLES.includes(s.role)?s.role:"Acoustic Guitar",song_key:s.key||"",capo:s.capo||"",bpm:String(s.bpm||""),chords:s.chords||"",tabs:s.tabs||"",notes:s.notes||"",shapes:Array.isArray(s.shapes)?s.shapes:[],created_by:currentUser.id};const {error}=await supabaseClient.from("master_songs").upsert(payload,{onConflict:"legacy_id"});if(!error)ok++;}
+  for(const s of rows){const payload={legacy_id:String(s.id||`${s.title}-${s.artist}-${s.role}`),title:s.title||"Untitled",artist:s.artist||"",role:ROLES.includes(s.role)?s.role:"Acoustic Guitar",song_key:s.key||"",capo:s.capo||"",bpm:String(s.bpm||""),chords:s.chords||"",tabs:s.tabs||"",notes:s.notes||"",shapes:Array.isArray(s.shapes)?s.shapes:[]};const {data,error}=await supabaseClient.rpc("bandaid_save_master_song",{p_token:accountToken,p_payload:payload});if(!error&&data?.id)ok++;}
   backupStatus(`Imported ${ok} of ${rows.length} songs into the Master Library.`);await loadSongLibrary();
 }
 
