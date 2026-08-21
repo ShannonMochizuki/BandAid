@@ -1,4 +1,4 @@
-const CACHE = "bandaid-chord-vault-v2.1.3";
+const CACHE = "bandaid-chord-vault-v2.1.4";
 const CACHE_PREFIX = "bandaid-chord-vault-";
 const APP_SCOPE = "/BandAid/";
 
