@@ -17,6 +17,9 @@ let currentProfile = null;
 let isAdmin = false;
 let masterSongs = [];
 let personalCopies = new Map();
+let songLists = [];
+let songListItems = [];
+let savedChords = [];
 let editingKind = "master";
 let editingId = null;
 let editingMasterId = null;
@@ -125,10 +128,13 @@ async function enterAuthenticatedApp(user){
   $("adminBadge").classList.toggle("hidden",!isAdmin);
   $("adminBtn")?.classList.toggle("hidden",!isAdmin);
   $("backupBtn").classList.remove("hidden");
+  $("listsBtn")?.classList.remove("hidden");
+  $("chordLibraryBtn")?.classList.remove("hidden");
   $("newSongBtn").classList.toggle("hidden",!isAdmin);
   $("emptyAddBtn").classList.toggle("hidden",!isAdmin);
   $("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin || legacySongs().length===0);
   await loadSongLibrary();
+  await Promise.allSettled([loadSongLists(), loadSavedChords()]);
   if($("currentRoleLabel")) $("currentRoleLabel").textContent=activeRole;
   updateRoleTools();
   showView("roleView");
@@ -148,7 +154,7 @@ async function logout(){
   try{ if(accountToken) await supabaseClient.rpc("bandaid_logout",{p_token:accountToken}); }catch(e){}
   accountToken=""; localStorage.removeItem(ACCOUNT_TOKEN_KEY);
   currentUser=null; currentProfile=null; isAdmin=false; masterSongs=[]; personalCopies=new Map();
-  $("accountChip").classList.add("hidden"); $("backupBtn").classList.add("hidden"); $("newSongBtn").classList.add("hidden");
+  $("accountChip").classList.add("hidden"); $("backupBtn").classList.add("hidden"); $("listsBtn")?.classList.add("hidden"); $("chordLibraryBtn")?.classList.add("hidden"); $("newSongBtn").classList.add("hidden");
   showView("authView");
 }
 async function bootstrapAuth(){
@@ -181,6 +187,123 @@ async function loadSongLibrary(){
     cacheCloudData(); renderLibrary();
   }catch(err){ if(!masterSongs.length) alert(`Could not load the shared song library: ${err.message}`); }
 }
+
+async function loadSongLists(){
+  if(!accountToken)return;
+  const [l,i]=await Promise.all([
+    supabaseClient.rpc("bandaid_list_song_lists",{p_token:accountToken}),
+    supabaseClient.rpc("bandaid_list_song_list_items",{p_token:accountToken})
+  ]);
+  if(l.error) throw l.error;
+  if(i.error) throw i.error;
+  songLists=l.data||[];
+  songListItems=i.data||[];
+}
+async function loadSavedChords(){
+  if(!accountToken)return;
+  const {data,error}=await supabaseClient.rpc("bandaid_list_saved_chords",{p_token:accountToken});
+  if(error) throw error;
+  savedChords=data||[];
+}
+function listItemsFor(listId){
+  return songListItems.filter(x=>x.list_id===listId).sort((a,b)=>(a.position||0)-(b.position||0));
+}
+function songForListItem(item){
+  const master=masterSongs.find(s=>s.id===item.song_id);
+  if(!master)return null;
+  const mode=item.version==="mine"&&personalCopies.has(master.id)?"mine":"official";
+  return {master,mode,data:dataForSong(master,mode)};
+}
+function renderSongLists(){
+  const host=$("songListsContainer"); if(!host)return;
+  if(!songLists.length){host.innerHTML='<div class="empty-mini">No lists yet. Create one above.</div>';return;}
+  host.innerHTML=songLists.map(list=>{
+    const items=listItemsFor(list.id);
+    const rows=items.map(item=>{
+      const resolved=songForListItem(item);
+      if(!resolved)return '';
+      const {master,mode,data}=resolved;
+      const key=effectiveSongKey(data)||"—";
+      return `<div class="list-song-row" data-item-id="${safeId(item.id)}">
+        <button class="list-song-open" data-song-id="${safeId(master.id)}" data-mode="${mode}">
+          <strong>${esc(master.title)}</strong>
+          <span>${esc(master.artist||"")} · Key ${esc(key)} · ${mode==="mine"?"My Copy":"Official"}</span>
+        </button>
+        <button class="ghost compact remove-list-item" data-item-id="${safeId(item.id)}">Remove</button>
+      </div>`;
+    }).join("");
+    return `<section class="song-list-card" data-list-id="${safeId(list.id)}">
+      <div class="song-list-card-head"><div><strong>${esc(list.name)}</strong><span>${items.length} song${items.length===1?"":"s"}</span></div><button class="ghost compact delete-song-list" data-list-id="${safeId(list.id)}">Delete</button></div>
+      <div class="song-list-items">${rows||'<div class="empty-mini">No songs in this list yet.</div>'}</div>
+    </section>`;
+  }).join("");
+  qsa(".list-song-open").forEach(btn=>btn.addEventListener("click",()=>{closeListsDialog();openReader(btn.dataset.songId,btn.dataset.mode);}));
+  qsa(".remove-list-item").forEach(btn=>btn.addEventListener("click",()=>removeSongListItem(btn.dataset.itemId)));
+  qsa(".delete-song-list").forEach(btn=>btn.addEventListener("click",()=>deleteSongList(btn.dataset.listId)));
+}
+async function openListsDialog(){
+  try{await loadSongLists();renderSongLists();$("listsDialog").classList.remove("hidden");}catch(err){alert(`Could not load lists: ${err.message}`);}
+}
+function closeListsDialog(){$("listsDialog")?.classList.add("hidden");}
+async function createSongList(){
+  const name=$("newListName").value.trim(); if(!name)return;
+  const {data,error}=await supabaseClient.rpc("bandaid_create_song_list",{p_token:accountToken,p_name:name});
+  if(error)return $("listsStatus").textContent=error.message;
+  $("newListName").value=""; await loadSongLists(); renderSongLists();
+}
+async function deleteSongList(id){
+  if(!confirm("Delete this list? The songs themselves will not be deleted."))return;
+  const {error}=await supabaseClient.rpc("bandaid_delete_song_list",{p_token:accountToken,p_list_id:id});
+  if(error)return alert(error.message); await loadSongLists();renderSongLists();
+}
+async function removeSongListItem(id){
+  const {error}=await supabaseClient.rpc("bandaid_remove_song_from_list",{p_token:accountToken,p_item_id:id});
+  if(error)return alert(error.message); await loadSongLists();renderSongLists();
+}
+async function openAddToListDialog(){
+  const master=masterSongs.find(s=>s.id===readingId);if(!master)return;
+  try{await loadSongLists();}catch(err){return alert(`Could not load lists: ${err.message}`);}
+  if(!songLists.length){if(confirm("You do not have a list yet. Create one now?"))openListsDialog();return;}
+  const version=readingMode==="mine"&&personalCopies.has(master.id)?"mine":"official";
+  $("addToListSummary").textContent=`Add “${master.title}” (${version==="mine"?"My Copy":"Official"})`;
+  $("addToListChoices").innerHTML=songLists.map(l=>`<button class="secondary add-list-choice" data-list-id="${safeId(l.id)}">${esc(l.name)}</button>`).join("");
+  qsa(".add-list-choice").forEach(btn=>btn.addEventListener("click",()=>addCurrentSongToList(btn.dataset.listId,version)));
+  $("addToListDialog").classList.remove("hidden");
+}
+function closeAddToListDialog(){$("addToListDialog")?.classList.add("hidden");}
+async function addCurrentSongToList(listId,version){
+  const master=masterSongs.find(s=>s.id===readingId);if(!master)return;
+  const {error}=await supabaseClient.rpc("bandaid_add_song_to_list",{p_token:accountToken,p_list_id:listId,p_song_id:master.id,p_version:version});
+  if(error)return alert(error.message); closeAddToListDialog(); await loadSongLists();
+}
+function renderSavedChords(){
+  const host=$("savedChordList");if(!host)return;
+  if(!savedChords.length){host.innerHTML='<div class="empty-mini">No saved chords yet.</div>';return;}
+  host.innerHTML=savedChords.map(c=>`<div class="saved-chord-row">
+    <div class="saved-chord-preview">${makeDiagram(c.name,c.frets,c.fingers)}<div class="hint mono">${esc(c.frets)}${c.fingers?" · fingers "+esc(c.fingers):""}</div></div>
+    <button class="ghost compact delete-saved-chord" data-id="${safeId(c.id)}">Delete</button>
+  </div>`).join("");
+  qsa(".delete-saved-chord").forEach(btn=>btn.addEventListener("click",()=>deleteSavedChord(btn.dataset.id)));
+}
+async function openChordLibrary(){
+  try{await loadSavedChords();renderSavedChords();$("chordLibraryDialog").classList.remove("hidden");}catch(err){alert(`Could not load chords: ${err.message}`);}
+}
+function closeChordLibrary(){$("chordLibraryDialog")?.classList.add("hidden");}
+async function saveChordToLibrary(shape){
+  const name=(shape?.name??$("savedChordName")?.value??"").trim();
+  const frets=(shape?.frets??$("savedChordFrets")?.value??"").trim();
+  const fingers=(shape?.fingers??$("savedChordFingers")?.value??"").trim();
+  if(!name||!frets)return alert("Enter a chord name and fret pattern.");
+  const {data,error}=await supabaseClient.rpc("bandaid_save_chord",{p_token:accountToken,p_payload:{name,frets,fingers}});
+  if(error)return alert(error.message);
+  if($("savedChordName")){$("savedChordName").value="";$("savedChordFrets").value="";$("savedChordFingers").value="";}
+  await loadSavedChords();renderSavedChords();
+}
+async function deleteSavedChord(id){
+  const {error}=await supabaseClient.rpc("bandaid_delete_saved_chord",{p_token:accountToken,p_chord_id:id});
+  if(error)return alert(error.message);await loadSavedChords();renderSavedChords();
+}
+
 function normalizeFrets(raw=""){ raw=raw.trim(); if(!raw)return[]; if(raw.includes("-")||raw.includes(" "))return raw.split(/[-\s,]+/).filter(Boolean); return raw.split(""); }
 function makeDiagram(name,fretsRaw,fingersRaw){
   const frets=normalizeFrets(fretsRaw),fingers=normalizeFrets(fingersRaw);
@@ -230,14 +353,14 @@ async function saveEditor(){
     const title=$("songTitle").value.trim(); if(!title){alert("Please enter a song title.");return;}
     if(editingKind==="master"){
       if(!isAdmin) throw new Error("Only the BandAid administrator can edit the Master Library.");
-      const payload={id:editingId||"",title,artist:$("songArtist").value.trim(),role:$("songRole").value,song_key:$("songKey").value.trim(),capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:$("songChords").value,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
+      const chartText=$("songChords").value, detectedKey=inferKeyFromChordChart(chartText), enteredKey=canonicalKey($("songKey").value.trim()); const payload={id:editingId||"",title,artist:$("songArtist").value.trim(),role:$("songRole").value,song_key:detectedKey||enteredKey||"",capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:chartText,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
       const {data,error}=await supabaseClient.rpc("bandaid_save_master_song",{p_token:accountToken,p_payload:payload});
       if(error) throw error; if(data?.ok===false) throw new Error(data.error);
       const saved=fromMasterRow(data); const idx=masterSongs.findIndex(s=>s.id===saved.id); if(idx>=0)masterSongs[idx]=saved;else masterSongs.unshift(saved);
       activeRole=saved.role; localStorage.setItem("chordVaultActiveRole",activeRole); cacheCloudData(); renderLibrary(); openReader(saved.id);
     }else{
       const master=masterSongs.find(s=>s.id===editingMasterId); if(!master)throw new Error("Master song not found.");
-      const payload={song_key:$("songKey").value.trim(),capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:$("songChords").value,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
+      const chartText=$("songChords").value, detectedKey=inferKeyFromChordChart(chartText), enteredKey=canonicalKey($("songKey").value.trim()); const payload={song_key:detectedKey||enteredKey||"",capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:chartText,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
       const {data,error}=await supabaseClient.rpc("bandaid_save_personal_copy",{p_token:accountToken,p_song_id:master.id,p_payload:payload});
       if(error)throw error;if(data?.ok===false)throw new Error(data.error);
       personalCopies.set(master.id,fromCopyRow(data)); cacheCloudData(); readingMode="mine"; renderLibrary(); openReader(master.id,"mine");
@@ -260,11 +383,11 @@ async function deleteEditing(){
 function renderReader(master,mode){
   const s=dataForSong(master,mode); const hasCopy=personalCopies.has(master.id);
   $("readerTitle").textContent=master.title; $("readerArtist").textContent=master.artist||"NO ARTIST";
-  const pills=[]; if(master.role)pills.push(`<span class="meta-pill">${esc(master.role)}</span>`); if(s.key)pills.push(`<span class="meta-pill">Key ${esc(s.key)}</span>`); if(s.capo)pills.push(`<span class="meta-pill">Capo ${esc(s.capo)}</span>`); if(s.bpm)pills.push(`<span class="meta-pill">${esc(s.bpm)} BPM</span>`); $("readerMeta").innerHTML=pills.join("");
+  const pills=[]; const actualKey=effectiveSongKey(s); if(master.role)pills.push(`<span class="meta-pill">${esc(master.role)}</span>`); if(actualKey)pills.push(`<span class="meta-pill">Key ${esc(actualKey)}</span>`); if(s.capo)pills.push(`<span class="meta-pill">Capo ${esc(s.capo)}</span>`); if(s.bpm)pills.push(`<span class="meta-pill">${esc(s.bpm)} BPM</span>`); $("readerMeta").innerHTML=pills.join("");
   const sourceKey=inferredSongKey(s); const targetKey=canonicalKey($("transposeKeySelect")?.value)||sourceKey;
   $("readerChords").textContent=(sourceKey&&targetKey)?transposeChordChart(s.chords,sourceKey,targetKey):(s.chords||"No chord + lyric chart saved."); $("readerTabs").textContent=s.tabs||"No guitar tab saved."; $("readerNotes").textContent=s.notes||"No notes saved.";
   if($("transposeKeySelect")){ const preferred=sourceKey||"C"; if(!$("transposeKeySelect").dataset.touched && [...$("transposeKeySelect").options].some(o=>o.value===preferred)) $("transposeKeySelect").value=preferred; $("transposeKeySelect").disabled=!sourceKey; $("transposeSourceLabel").textContent=sourceKey?`Original key: ${sourceKey}`:"Set a song key to transpose chords"; $("saveTransposeCopyBtn").disabled=!sourceKey; }
-  $("readerShapes").innerHTML=s.shapes?.length?s.shapes.map(shape=>`<div class="reader-shape">${makeDiagram(shape.name,shape.frets,shape.fingers)}<div class="hint mono">${esc(shape.frets)}${shape.fingers?" · fingers "+esc(shape.fingers):""}</div></div>`).join(""):"No chord shapes saved.";
+  $("readerShapes").innerHTML=s.shapes?.length?s.shapes.map((shape,i)=>`<div class="reader-shape">${makeDiagram(shape.name,shape.frets,shape.fingers)}<div class="hint mono">${esc(shape.frets)}${shape.fingers?" · fingers "+esc(shape.fingers):""}</div><button class="secondary compact save-reader-chord" data-shape-index="${i}" type="button">Save to My Chords</button></div>`).join(""):"No chord shapes saved."; qsa(".save-reader-chord").forEach(btn=>btn.addEventListener("click",()=>saveChordToLibrary((s.shapes||[])[Number(btn.dataset.shapeIndex)])));
   $("versionModeLabel").textContent=mode==="mine"?"My Private Copy":"Official Master"; $("versionModeHelp").textContent=mode==="mine"?"Only you can see and edit this version":"Shared read-only version for regular users";
   $("copyToggleBtn").textContent=mode==="mine"?"Official Version":(hasCopy?"My Copy":"Create My Copy");
   $("editBtn").textContent=mode==="official"&&isAdmin?"Edit Official":"Edit My Copy";
@@ -291,7 +414,7 @@ function renderLibrary(){
   const term=$("searchInput").value.trim().toLowerCase(),sort=$("sortSelect").value;
   let filtered=masterSongs.filter(s=>s.role===activeRole&&[s.title,s.artist,s.key,s.bpm,s.chords,s.notes].join(" ").toLowerCase().includes(term));
   filtered.sort((a,b)=>sort==="title"?a.title.localeCompare(b.title):sort==="artist"?(a.artist||"").localeCompare(b.artist||""):new Date(b.updatedAt)-new Date(a.updatedAt));
-  $("songList").innerHTML=filtered.map(s=>{const mine=personalCopies.has(s.id);const badges=[s.key?`<span class="badge">Key ${esc(s.key)}</span>`:"",s.bpm?`<span class="badge">${esc(s.bpm)} BPM</span>`:"",mine?`<span class="badge personal-badge">My Copy</span>`:""].join("");const snippet=(s.chords||s.notes||"").trim().slice(0,150);return `<div class="song-card" data-id="${safeId(s.id)}"><div class="eyebrow">${esc(s.artist||"NO ARTIST")}</div><h3>${esc(s.title)}</h3><div class="badge-row">${badges}</div>${snippet?`<div class="snippet mono">${esc(snippet)}</div>`:""}</div>`;}).join("");
+  $("songList").innerHTML=filtered.map(s=>{const mine=personalCopies.has(s.id),displayKey=effectiveSongKey(s);const badges=[displayKey?`<span class="badge">Key ${esc(displayKey)}</span>`:"",s.bpm?`<span class="badge">${esc(s.bpm)} BPM</span>`:"",mine?`<span class="badge personal-badge">My Copy</span>`:""].join("");const snippet=(s.chords||s.notes||"").trim().slice(0,150);return `<div class="song-card" data-id="${safeId(s.id)}"><div class="eyebrow">${esc(s.artist||"NO ARTIST")}</div><h3>${esc(s.title)}</h3><div class="badge-row">${badges}</div>${snippet?`<div class="snippet mono">${esc(snippet)}</div>`:""}</div>`;}).join("");
   qsa(".song-card").forEach(c=>c.addEventListener("click",()=>openReader(c.dataset.id)));
   $("stats").textContent=`${filtered.length} shared song${filtered.length===1?"":"s"} in ${activeRole}${isAdmin?" · Admin":""}`;
   $("emptyState").classList.toggle("hidden",filtered.length>0||term); $("emptyAddBtn").classList.toggle("hidden",!isAdmin);
@@ -400,8 +523,43 @@ function canonicalKey(raw=""){const m=String(raw).trim().match(/(?:^|\b)([A-Ga-g
 function chordTokens(text=""){const tokens=[],regex=/^(?:[A-G](?:#|b)?)(?:m|maj|min|dim|aug|sus|add)?(?:2|4|5|6|7|9|11|13)?(?:\([^)]*\))?(?:\/[A-G](?:#|b)?)?$/;text.split(/\n/).forEach(line=>line.trim().split(/\s+/).forEach(token=>{const clean=token.replace(/[|,:;]+$/g,"");if(regex.test(clean))tokens.push(clean);}));return tokens.slice(0,8);}
 function parseRoot(chord){const m=chord.match(/^([A-G](?:#|b)?)(.*)$/);return m?{root:m[1],rest:m[2]}:null;}
 function transposeChord(chord,fromKey,toKey){fromKey=canonicalKey(fromKey);toKey=canonicalKey(toKey);const p=parseRoot(chord);if(!p||fromKey==null||toKey==null)return chord;const shift=(NOTE_INDEX[toKey]-NOTE_INDEX[fromKey]+12)%12;const preferFlats=/b/.test(toKey);const names=preferFlats?FLAT_NAMES:SHARP_NAMES;const newRoot=names[(NOTE_INDEX[p.root]+shift)%12];const rest=p.rest.replace(/\/([A-G](?:#|b)?)/g,(m,bass)=>{const idx=NOTE_INDEX[bass];return idx==null?m:`/${names[(idx+shift)%12]}`;});return newRoot+rest;}
-function inferredSongKey(song){const explicit=canonicalKey(song?.key);if(explicit)return explicit;const chords=chordTokens(song?.chords||"");if(chords.length){const first=parseRoot(chords[0]);if(first&&canonicalKey(first.root))return canonicalKey(first.root);}return null;}
-function keyTestProgression(song,targetKey){const sourceKey=inferredSongKey(song)||canonicalKey(targetKey)||"C";const target=canonicalKey(targetKey)||sourceKey;const chords=chordTokens(song.chords);return (chords.length?chords:[sourceKey]).slice(0,4).map(c=>transposeChord(c,sourceKey,target));}
+function chordQuality(chord){
+  const p=parseRoot(chord); if(!p)return "";
+  const r=(p.rest||"").toLowerCase();
+  if(/^m(?!aj)/.test(r)||/^min/.test(r))return "minor";
+  if(/dim|°/.test(r))return "dim";
+  return "major";
+}
+function inferKeyFromChordChart(text){
+  const tokens=chordTokens(text||"").slice(0,20);
+  if(!tokens.length)return null;
+  const majorNames=SHARP_NAMES;
+  let best=null,bestScore=-1,second=-1;
+  for(let tonic=0;tonic<12;tonic++){
+    const degrees=[0,2,4,5,7,9,11].map(x=>(tonic+x)%12);
+    const qualities=["major","minor","minor","major","major","minor","dim"];
+    let score=0;
+    tokens.forEach((ch,i)=>{
+      const p=parseRoot(ch); if(!p)return;
+      const root=NOTE_INDEX[p.root]; const idx=degrees.indexOf(root); if(idx<0)return;
+      score+=2;
+      if(chordQuality(ch)===qualities[idx])score+=1.15;
+      if(idx===0)score+=.45;
+      if(i===0&&idx===0)score+=.7;
+    });
+    if(score>bestScore){second=bestScore;bestScore=score;best=majorNames[tonic];}
+    else if(score>second)second=score;
+  }
+  return bestScore>=4 && bestScore-second>=.35 ? canonicalKey(best) : null;
+}
+function inferredSongKey(song){
+  const chartKey=inferKeyFromChordChart(song?.chords||"");
+  const explicit=canonicalKey(song?.key);
+  // The chord chart is authoritative when it provides a confident key.
+  return chartKey||explicit||null;
+}
+function effectiveSongKey(song){return inferredSongKey(song)||canonicalKey(song?.key)||"";}
+function keyTestProgression(song,targetKey){const sourceKey=effectiveSongKey(song)||canonicalKey(targetKey)||"C";const target=canonicalKey(targetKey)||sourceKey;const chords=chordTokens(song.chords);return (chords.length?chords:[sourceKey]).slice(0,4).map(c=>transposeChord(c,sourceKey,target));}
 function isChordToken(token){return /^(?:[A-G](?:#|b)?)(?:m|maj|min|dim|aug|sus|add)?(?:2|4|5|6|7|9|11|13)?(?:\([^)]*\))?(?:\/[A-G](?:#|b)?)?$/.test(token);}
 function transposeChordChart(text,fromKey,toKey){fromKey=canonicalKey(fromKey);toKey=canonicalKey(toKey);if(!fromKey||!toKey||fromKey===toKey)return text||"";return String(text||"").split("\n").map(line=>{const parts=line.split(/(\s+)/);const candidates=parts.filter(x=>x.trim()).map(x=>x.replace(/^[|([{]+|[|,;:.)\]}]+$/g,""));const chordCount=candidates.filter(isChordToken).length;if(!chordCount||chordCount/Math.max(1,candidates.length)<0.5)return line;return parts.map(part=>{if(/^\s+$/.test(part))return part;const lead=(part.match(/^[|([{]+/)||[""])[0],trail=(part.match(/[|,;:.)\]}]+$/)||[""])[0];const core=part.slice(lead.length,part.length-trail.length||undefined);return isChordToken(core)?lead+transposeChord(core,fromKey,toKey)+trail:part;}).join("");}).join("\n");}
 function stopKeyTest(){keyTestTimers.forEach(clearTimeout);keyTestTimers=[];keyTestNodes.forEach(n=>{try{n.stop();}catch(e){}try{n.disconnect();}catch(e){}});keyTestNodes=[];}
@@ -418,7 +576,7 @@ async function saveTransposedCopy(){
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.1.6",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.2.0",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
@@ -444,6 +602,17 @@ if(cueChannel)cueChannel.addEventListener("message",e=>showLiveCue(e.data));wind
 $("testKeySelect")?.addEventListener("change",()=>{stopKeyTest();$("testKeySelect").dataset.touched="1";const m=masterSongs.find(s=>s.id===readingId);if(m){const selectedKey=$("testKeySelect").value;$("keyTestProgression").textContent=keyTestProgression(dataForSong(m,readingMode),selectedKey).join("  ·  ");}}); $("playKeyTestBtn")?.addEventListener("click",playKeyTest); $("stopKeyTestBtn")?.addEventListener("click",stopKeyTest);
 $("transposeKeySelect")?.addEventListener("change",()=>{$("transposeKeySelect").dataset.touched="1";const m=masterSongs.find(s=>s.id===readingId);if(m)renderReader(m,readingMode);}); $("resetTransposeBtn")?.addEventListener("click",()=>{const m=masterSongs.find(s=>s.id===readingId);if(!m)return;const s=dataForSong(m,readingMode),source=inferredSongKey(s)||"C";$("transposeKeySelect").value=source;$("transposeKeySelect").dataset.touched="1";renderReader(m,readingMode);}); $("saveTransposeCopyBtn")?.addEventListener("click",saveTransposedCopy);
 $("backupBtn")?.addEventListener("click",()=>{$("backupPanel").classList.toggle("hidden");if(!$("backupPanel").classList.contains("hidden"))$("backupPanel").scrollIntoView({behavior:"smooth",block:"nearest"});}); $("closeBackupBtn")?.addEventListener("click",()=>$("backupPanel").classList.add("hidden")); $("exportBackupBtn")?.addEventListener("click",exportBackup); $("importBackupBtn")?.addEventListener("click",()=>$("backupFileInput").click()); $("backupFileInput")?.addEventListener("change",e=>prepareRestore(e.target.files?.[0])); $("importLocalMasterBtn")?.addEventListener("click",importLocalSongsToMaster);
+
+
+$("listsBtn")?.addEventListener("click",openListsDialog);
+$("closeListsDialogBtn")?.addEventListener("click",closeListsDialog);
+$("createListBtn")?.addEventListener("click",createSongList);
+$("newListName")?.addEventListener("keydown",e=>{if(e.key==="Enter")createSongList();});
+$("addToListBtn")?.addEventListener("click",openAddToListDialog);
+$("closeAddToListDialogBtn")?.addEventListener("click",closeAddToListDialog);
+$("chordLibraryBtn")?.addEventListener("click",openChordLibrary);
+$("closeChordLibraryDialogBtn")?.addEventListener("click",closeChordLibrary);
+$("saveChordBtn")?.addEventListener("click",()=>saveChordToLibrary());
 
 $("accountBtn")?.addEventListener("click",()=>openAccountDialog(false)); $("closeAccountDialogBtn")?.addEventListener("click",closeAccountDialog); $("saveNewPinBtn")?.addEventListener("click",saveOwnPin); $("newPinConfirmInput")?.addEventListener("keydown",e=>{if(e.key==="Enter")saveOwnPin();});
 $("adminBtn")?.addEventListener("click",openAdminDialog); $("closeAdminDialogBtn")?.addEventListener("click",closeAdminDialog); $("refreshAdminBtn")?.addEventListener("click",refreshAdminDashboard); $("adminResetPinBtn")?.addEventListener("click",adminResetPin); $("adminTempPin")?.addEventListener("keydown",e=>{if(e.key==="Enter")adminResetPin();});

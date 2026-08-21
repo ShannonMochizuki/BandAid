@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.1.6 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.2.0 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.1.6">
-  <link rel="stylesheet" href="./styles.css?v=2.1.6">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.2.0">
+  <link rel="stylesheet" href="./styles.css?v=2.2.0">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.1.6</div>
+    <div class="version-indicator" aria-label="App version">v2.2.0</div>
 
     <header class="topbar">
       <div>
@@ -23,6 +23,8 @@
       </div>
       <div class="top-actions">
         <div id="accountChip" class="account-chip hidden"><span id="accountName"></span><span id="adminBadge" class="admin-badge hidden">Admin</span><button id="accountBtn" class="ghost compact">Account</button><button id="adminBtn" class="ghost compact hidden">Admin</button><button id="logoutBtn" class="ghost compact">Log out</button></div>
+        <button id="listsBtn" class="secondary hidden">Lists</button>
+        <button id="chordLibraryBtn" class="secondary hidden">My Chords</button>
         <button id="backupBtn" class="secondary hidden">Backup</button>
         <button id="newSongBtn" class="primary hidden">+ New Song</button>
       </div>
@@ -255,7 +257,7 @@ E|----------------|"></textarea>
       <section id="readerView" class="view">
         <div class="editor-head">
           <button class="ghost" id="readerBackBtn">← Library</button>
-          <div class="reader-actions"><button class="secondary" id="copyToggleBtn">My Copy</button><button class="secondary" id="editBtn">Edit</button></div>
+          <div class="reader-actions"><button class="secondary" id="addToListBtn">+ List</button><button class="secondary" id="copyToggleBtn">My Copy</button><button class="secondary" id="editBtn">Edit</button></div>
         </div>
         <article class="reader-card">
           <div class="version-strip"><span id="versionModeLabel" class="version-mode-label">Official Master</span><span id="versionModeHelp">Read-only shared version</span></div>
@@ -367,6 +369,51 @@ E|----------------|"></textarea>
       </div>
     </div>
 
+
+    <div id="listsDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="listsTitle">
+      <div class="dialog-card library-dialog-card">
+        <div class="admin-dialog-head">
+          <div><div class="eyebrow">MY LISTS</div><h2 id="listsTitle">Song lists</h2></div>
+          <button id="closeListsDialogBtn" class="ghost compact" type="button">Close</button>
+        </div>
+        <p class="dialog-copy">Build personal setlists using either the official song or your own saved version.</p>
+        <div class="list-create-row">
+          <input id="newListName" maxlength="60" placeholder="e.g. Sunday 25 Aug">
+          <button id="createListBtn" class="primary" type="button">Create list</button>
+        </div>
+        <div id="listsStatus" class="auth-status"></div>
+        <div id="songListsContainer" class="song-lists-container"></div>
+      </div>
+    </div>
+
+    <div id="addToListDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="addToListTitle">
+      <div class="dialog-card">
+        <div class="eyebrow">ADD TO LIST</div>
+        <h2 id="addToListTitle">Choose a song list</h2>
+        <p id="addToListSummary" class="dialog-copy"></p>
+        <div id="addToListChoices" class="admin-list"></div>
+        <button id="closeAddToListDialogBtn" class="ghost dialog-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+
+    <div id="chordLibraryDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="chordLibraryTitle">
+      <div class="dialog-card library-dialog-card">
+        <div class="admin-dialog-head">
+          <div><div class="eyebrow">MY CHORDS</div><h2 id="chordLibraryTitle">Saved chord shapes</h2></div>
+          <button id="closeChordLibraryDialogBtn" class="ghost compact" type="button">Close</button>
+        </div>
+        <p class="dialog-copy">Your reusable chord-shape library. These chords are private to your account.</p>
+        <div class="saved-chord-form">
+          <input id="savedChordName" placeholder="Chord name, e.g. D/F#">
+          <input id="savedChordFrets" class="mono" placeholder="Frets, e.g. 2x0232">
+          <input id="savedChordFingers" class="mono" placeholder="Fingers, optional">
+          <button id="saveChordBtn" class="primary" type="button">Save chord</button>
+        </div>
+        <div id="chordLibraryStatus" class="auth-status"></div>
+        <div id="savedChordList" class="saved-chord-list"></div>
+      </div>
+    </div>
+
     <div id="restoreDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
       <div class="dialog-card">
         <div class="eyebrow">RESTORE BACKUP</div>
@@ -402,6 +449,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.1.6"></script>
+  <script src="./app.js?v=2.2.0"></script>
 </body>
 </html>

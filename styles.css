@@ -293,3 +293,29 @@ label input{margin-top:6px}
 .transpose-tool-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap;flex:1;justify-content:flex-end}
 .transpose-tool-controls label{min-width:135px;flex:1;max-width:180px}.transpose-tool-controls select{width:100%;margin-top:6px}
 @media(max-width:560px){.transpose-tool-controls{justify-content:stretch}.transpose-tool-controls label{max-width:none;flex-basis:100%}.transpose-tool-controls button{flex:1}}
+
+
+/* v2.2.0 — personal song lists + reusable chord library */
+.library-dialog-card{width:min(760px,100%);max-height:88vh;overflow:auto}
+.list-create-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin:14px 0}
+.song-lists-container{display:grid;gap:12px;margin-top:14px}
+.song-list-card{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden}
+.song-list-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 14px;background:var(--soft)}
+.song-list-card-head>div{display:flex;flex-direction:column;gap:3px}
+.song-list-card-head span{font-size:.72rem;color:var(--muted)}
+.song-list-items{display:grid}
+.list-song-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:11px 12px;border-top:1px solid var(--line)}
+.list-song-row:first-child{border-top:0}
+.list-song-open{border:0;background:transparent;text-align:left;padding:0;display:flex;flex-direction:column;gap:3px;color:var(--ink)}
+.list-song-open span{font-size:.72rem;color:var(--muted)}
+.empty-mini{padding:16px;color:var(--muted);font-size:.8rem;text-align:center}
+.saved-chord-form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin:14px 0}
+.saved-chord-list{display:grid;gap:10px;margin-top:14px}
+.saved-chord-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;border:1px solid var(--line);border-radius:16px;padding:12px}
+.saved-chord-preview{min-width:0}
+.reader-shape .save-reader-chord{margin-top:10px}
+@media(max-width:700px){
+  .list-create-row{grid-template-columns:1fr}
+  .saved-chord-form{grid-template-columns:1fr}
+  .list-song-row{grid-template-columns:1fr}
+}
