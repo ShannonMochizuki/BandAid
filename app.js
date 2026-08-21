@@ -558,6 +558,11 @@ $("restoreDialog").addEventListener("click",event=>{ if(event.target === $("rest
 document.addEventListener("keydown",event=>{ if(event.key === "Escape" && !$("restoreDialog").classList.contains("hidden")) closeRestoreDialog(); });
 
 if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js", {scope:"./"}).catch(()=>{}));
+  window.addEventListener("load", async ()=>{
+    try{
+      const registration = await navigator.serviceWorker.register("./sw.js?v=1.8.1", {scope:"./", updateViaCache:"none"});
+      await registration.update();
+    }catch(_err){}
+  });
 }
 renderLibrary();
