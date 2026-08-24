@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.2.4 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.2.5 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.2.4">
-  <link rel="stylesheet" href="./styles.css?v=2.2.4">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.2.5">
+  <link rel="stylesheet" href="./styles.css?v=2.2.5">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.2.4</div>
+    <div class="version-indicator" aria-label="App version">v2.2.5</div>
 
     <header class="topbar">
       <div class="brand-lockup" aria-label="BandAid">
@@ -291,28 +291,34 @@ E|----------------|"></textarea>
             <div id="keyTestProgression" class="key-test-progression mono"></div>
           </section>
 
-          <section class="transpose-tool" aria-label="Chord transposer">
-            <div class="transpose-tool-copy">
-              <div class="eyebrow">CHORD TRANSPOSER</div>
-              <strong id="transposeSourceLabel">Original key</strong>
+          <section class="transpose-bar" aria-label="Chord transposer">
+            <div class="transpose-key-group">
+              <span id="transposeSourceLabel" class="transpose-source">Key D</span>
+              <span class="transpose-arrow" aria-hidden="true">→</span>
+              <label class="sr-only" for="transposeKeySelect">Transpose to</label>
+              <select id="transposeKeySelect" class="transpose-select">
+                <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option>
+                <option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+              </select>
             </div>
-            <div class="transpose-tool-controls">
-              <label>Transpose to
-                <select id="transposeKeySelect">
-                  <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option>
-                  <option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
-                </select>
-              </label>
-              <button id="resetTransposeBtn" class="secondary compact" type="button">Original key</button>
-              <button id="saveTransposeCopyBtn" class="primary compact" type="button">Save to My Copy</button>
+            <div class="transpose-actions">
+              <button id="resetTransposeBtn" class="icon-btn subtle" type="button" title="Reset to original key" aria-label="Reset to original key">↺</button>
+              <button id="saveTransposeCopyBtn" class="text-btn subtle" type="button">Save copy</button>
             </div>
           </section>
 
-          <div class="reader-tabs">
-            <button class="reader-tab active" data-rpanel="readerChords">Chords + Lyrics</button>
-            <button class="reader-tab" data-rpanel="readerTabs">Tabs</button>
-            <button class="reader-tab" data-rpanel="readerShapes">Shapes</button>
-            <button class="reader-tab" data-rpanel="readerNotes">Notes</button>
+          <div class="reader-tabs-row">
+            <div class="reader-tabs">
+              <button class="reader-tab active" data-rpanel="readerChords">Chords + Lyrics</button>
+              <button class="reader-tab" data-rpanel="readerTabs">Tabs</button>
+              <button class="reader-tab" data-rpanel="readerShapes">Shapes</button>
+              <button class="reader-tab" data-rpanel="readerNotes">Notes</button>
+            </div>
+            <div class="song-font-controls" aria-label="Chord sheet font size">
+              <button id="songFontDownBtn" class="font-btn" type="button" aria-label="Decrease chord font size">A−</button>
+              <span id="songFontSizeLabel">100%</span>
+              <button id="songFontUpBtn" class="font-btn" type="button" aria-label="Increase chord font size">A+</button>
+            </div>
           </div>
 
           <div id="readerChords" class="reader-panel active"></div>
@@ -449,6 +455,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.2.4"></script>
+  <script src="./app.js?v=2.2.5"></script>
 </body>
 </html>

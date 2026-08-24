@@ -385,8 +385,8 @@ function renderReader(master,mode){
   $("readerTitle").textContent=master.title; $("readerArtist").textContent=master.artist||"NO ARTIST";
   const pills=[]; const actualKey=effectiveSongKey(s); if(master.role)pills.push(`<span class="meta-pill">${esc(master.role)}</span>`); if(actualKey)pills.push(`<span class="meta-pill">Key ${esc(actualKey)}</span>`); if(s.capo)pills.push(`<span class="meta-pill">Capo ${esc(s.capo)}</span>`); if(s.bpm)pills.push(`<span class="meta-pill">${esc(s.bpm)} BPM</span>`); $("readerMeta").innerHTML=pills.join("");
   const sourceKey=inferredSongKey(s); const targetKey=canonicalKey($("transposeKeySelect")?.value)||sourceKey;
-  $("readerChords").textContent=(sourceKey&&targetKey)?transposeChordChart(s.chords,sourceKey,targetKey):(s.chords||"No chord + lyric chart saved."); $("readerTabs").textContent=s.tabs||"No guitar tab saved."; $("readerNotes").textContent=s.notes||"No notes saved.";
-  if($("transposeKeySelect")){ const preferred=sourceKey||"C"; if(!$("transposeKeySelect").dataset.touched && [...$("transposeKeySelect").options].some(o=>o.value===preferred)) $("transposeKeySelect").value=preferred; $("transposeKeySelect").disabled=!sourceKey; $("transposeSourceLabel").textContent=sourceKey?`Original key: ${sourceKey}`:"Set a song key to transpose chords"; $("saveTransposeCopyBtn").disabled=!sourceKey; }
+  $("readerChords").textContent=(sourceKey&&targetKey)?transposeChordChart(s.chords,sourceKey,targetKey):(s.chords||"No chord + lyric chart saved."); applySongFontScale(); $("readerTabs").textContent=s.tabs||"No guitar tab saved."; $("readerNotes").textContent=s.notes||"No notes saved.";
+  if($("transposeKeySelect")){ const preferred=sourceKey||"C"; if(!$("transposeKeySelect").dataset.touched && [...$("transposeKeySelect").options].some(o=>o.value===preferred)) $("transposeKeySelect").value=preferred; $("transposeKeySelect").disabled=!sourceKey; $("transposeSourceLabel").textContent=sourceKey?`Key ${sourceKey}`:"Key —"; $("saveTransposeCopyBtn").disabled=!sourceKey; }
   $("readerShapes").innerHTML=s.shapes?.length?s.shapes.map((shape,i)=>`<div class="reader-shape">${makeDiagram(shape.name,shape.frets,shape.fingers)}<div class="hint mono">${esc(shape.frets)}${shape.fingers?" · fingers "+esc(shape.fingers):""}</div><button class="secondary compact save-reader-chord" data-shape-index="${i}" type="button">Save to My Chords</button></div>`).join(""):"No chord shapes saved."; qsa(".save-reader-chord").forEach(btn=>btn.addEventListener("click",()=>saveChordToLibrary((s.shapes||[])[Number(btn.dataset.shapeIndex)])));
   $("versionModeLabel").textContent=mode==="mine"?"My Private Copy":"Official Master"; $("versionModeHelp").textContent=mode==="mine"?"Only you can see and edit this version":"Shared read-only version for regular users";
   $("copyToggleBtn").textContent=mode==="mine"?"Official Version":(hasCopy?"My Copy":"Create My Copy");
@@ -576,7 +576,7 @@ async function saveTransposedCopy(){
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.2.4",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.2.5",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
@@ -614,6 +614,22 @@ $("chordLibraryBtn")?.addEventListener("click",openChordLibrary);
 $("closeChordLibraryDialogBtn")?.addEventListener("click",closeChordLibrary);
 $("saveChordBtn")?.addEventListener("click",()=>saveChordToLibrary());
 
+
+const SONG_FONT_STORAGE_KEY="bandaid_song_font_scale";
+let songFontScale=Math.max(0.8,Math.min(1.6,Number(localStorage.getItem(SONG_FONT_STORAGE_KEY))||1));
+function applySongFontScale(){
+  if($("readerChords")) $("readerChords").style.fontSize=`${songFontScale}rem`;
+  if($("songFontSizeLabel")) $("songFontSizeLabel").textContent=`${Math.round(songFontScale*100)}%`;
+}
+function changeSongFont(delta){
+  songFontScale=Math.max(0.8,Math.min(1.6,Math.round((songFontScale+delta)*10)/10));
+  localStorage.setItem(SONG_FONT_STORAGE_KEY,String(songFontScale));
+  applySongFontScale();
+}
+
+$("songFontDownBtn")?.addEventListener("click",()=>changeSongFont(-0.1));
+$("songFontUpBtn")?.addEventListener("click",()=>changeSongFont(0.1));
+applySongFontScale();
 $("accountBtn")?.addEventListener("click",()=>openAccountDialog(false)); $("closeAccountDialogBtn")?.addEventListener("click",closeAccountDialog); $("saveNewPinBtn")?.addEventListener("click",saveOwnPin); $("newPinConfirmInput")?.addEventListener("keydown",e=>{if(e.key==="Enter")saveOwnPin();});
 $("adminBtn")?.addEventListener("click",openAdminDialog); $("closeAdminDialogBtn")?.addEventListener("click",closeAdminDialog); $("refreshAdminBtn")?.addEventListener("click",refreshAdminDashboard); $("adminResetPinBtn")?.addEventListener("click",adminResetPin); $("adminTempPin")?.addEventListener("keydown",e=>{if(e.key==="Enter")adminResetPin();});
 window.addEventListener("beforeunload",()=>stopLeaderHeartbeat());

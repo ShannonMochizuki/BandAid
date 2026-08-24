@@ -448,3 +448,31 @@ label input{margin-top:6px}
     border-radius:10px;
   }
 }
+
+/* v2.2.5 — compact transposer + chord sheet zoom */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.transpose-bar{margin:14px 0 6px;min-height:46px;padding:7px 9px 7px 12px;border:1px solid var(--line,#ddd9d1);border-radius:14px;background:rgba(240,237,231,.58);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.transpose-key-group,.transpose-actions{display:flex;align-items:center;gap:7px}
+.transpose-source{font-size:.78rem;font-weight:750;color:var(--muted,#777);white-space:nowrap}
+.transpose-arrow{color:var(--muted,#888);font-size:.8rem}
+.transpose-select{appearance:auto;width:auto;min-width:64px;height:34px;margin:0;padding:4px 24px 4px 9px;border:1px solid var(--line,#ddd9d1);border-radius:10px;background:#fff;font-size:.84rem;font-weight:700}
+.icon-btn,.text-btn{border:0;background:transparent;color:var(--ink,#111);min-height:34px;border-radius:9px;font-weight:700}
+.icon-btn{width:34px;padding:0;font-size:1rem}
+.text-btn{padding:0 9px;font-size:.76rem}
+.icon-btn:disabled,.text-btn:disabled{opacity:.35}
+.reader-tabs-row{display:flex;align-items:flex-end;gap:10px;border-bottom:1px solid var(--line);margin:18px 0 0}
+.reader-tabs-row .reader-tabs{flex:1;min-width:0;margin:0;border-bottom:0}
+.song-font-controls{display:flex;align-items:center;gap:4px;padding:0 0 7px 2px;flex:0 0 auto;color:var(--muted,#777)}
+.font-btn{border:0;background:transparent;color:var(--ink,#111);padding:5px 6px;border-radius:8px;font-size:.75rem;font-weight:800;min-width:30px}
+.font-btn:active{background:rgba(0,0,0,.06)}
+#songFontSizeLabel{min-width:38px;text-align:center;font-size:.66rem;font-weight:700;color:var(--muted,#777)}
+#readerChords{transition:font-size .12s ease}
+@media(max-width:560px){
+  .transpose-bar{padding-left:10px}
+  .transpose-source{font-size:.72rem}
+  .text-btn{padding:0 6px}
+  .reader-tabs-row{gap:4px}
+  .song-font-controls{gap:0}
+  #songFontSizeLabel{display:none}
+  .font-btn{padding-inline:4px;min-width:27px}
+}
