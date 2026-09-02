@@ -511,6 +511,34 @@ function renderLiveSessionUI(){
 function updateRoleTools(){ $("worshipCuePanel")?.classList.toggle("hidden",activeRole!=="Worship Leader"); if(activeRole==="Worship Leader")$("liveCueBanner")?.classList.add("hidden"); renderLiveSessionUI(); }
 function clearLiveCue(){if(cueDismissTimer){clearTimeout(cueDismissTimer);cueDismissTimer=null;}$("liveCueBanner")?.classList.add("hidden");$("liveModeCueStrip")?.classList.add("hidden");qsa(".cue-btn").forEach(btn=>btn.classList.remove("active"));}
 function showLiveCue(cue){if(!cue)return;const label=cue.label||cue.cue||cue,sentAt=cue.sentAt||cue.created_at||new Date().toISOString(),sentMs=new Date(sentAt).getTime(),age=Number.isFinite(sentMs)?Math.max(0,Date.now()-sentMs):0,remaining=Math.max(0,60000-age);if(remaining<=0){clearLiveCue();return;}if(activeRole!=="Worship Leader"){const banner=$("liveCueBanner");if(banner){$("liveCueText").textContent=label;$("liveCueTime").textContent="Worship Leader cue";banner.style.setProperty("--cue-life",`${remaining}ms`);banner.classList.remove("hidden","cue-pulse");void banner.offsetWidth;banner.classList.add("cue-pulse");}if($("liveModeCueStrip")){$("liveModeCueText").textContent=label;$("liveModeCueStrip").classList.remove("hidden");}if(navigator.vibrate)navigator.vibrate([120,70,120]);}if(cueDismissTimer)clearTimeout(cueDismissTimer);cueDismissTimer=setTimeout(clearLiveCue,remaining);}
+async function subscribeToLiveSession(){
+  if(!liveSession?.id)return;
+
+  if(realtimeChannel){
+    try{await supabaseClient.removeChannel(realtimeChannel);}catch(e){}
+  }
+
+  realtimeChannel=supabaseClient
+    .channel(`bandaid-session-${liveSession.id}`)
+    .on(
+      "postgres_changes",
+      {event:"INSERT",schema:"public",table:"worship_cues",filter:`session_id=eq.${liveSession.id}`},
+      payload=>showLiveCue(payload.new)
+    )
+    .on(
+      "postgres_changes",
+      {event:"UPDATE",schema:"public",table:"band_sessions",filter:`id=eq.${liveSession.id}`},
+      payload=>{if(payload.new?.is_active===false)handleSessionEnded();}
+    )
+    .subscribe(status=>{
+      if(status==="SUBSCRIBED"){
+        setSessionStatus(`Connected as ${activeRole}.`,"live");
+      }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
+        setSessionStatus("Realtime connection problem. Retrying…","error");
+      }
+    });
+}
+
 async function handleSessionEnded(){clearLiveCue();closeLiveChordMode();stopLeaderHeartbeat(); if(realtimeChannel){try{await supabaseClient.removeChannel(realtimeChannel);}catch(e){}} realtimeChannel=null;saveLiveSession(null);setSessionStatus("Live session ended.","error");$("lastCueSent").textContent="The live session has ended."; }
 function stopLeaderHeartbeat(){ if(leaderHeartbeatTimer){ clearInterval(leaderHeartbeatTimer); leaderHeartbeatTimer=null; } }
 async function sendLeaderHeartbeat(){
@@ -659,7 +687,7 @@ async function addSongToLiveSet(songId,version){if(!liveModeListId)return alert(
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.9",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.10",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
