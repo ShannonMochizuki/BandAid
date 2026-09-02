@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.4.7 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.4.8 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.4.7">
-  <link rel="stylesheet" href="./styles.css?v=2.4.7">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.4.8">
+  <link rel="stylesheet" href="./styles.css?v=2.4.8">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.4.7</div>
+    <div class="version-indicator" aria-label="App version">v2.4.8</div>
 
         <header class="topbar">
       <div class="brand-lockup" aria-label="BandAid">
@@ -90,6 +90,10 @@
           <button class="role-card" data-role="Bass Guitar">
             <span class="role-art" aria-hidden="true">𝄢</span>
             <span class="role-card-copy"><strong>Bass Guitar</strong><small>Charts, tabs & grooves</small></span>
+          </button>
+          <button class="role-card" data-role="Keyboard">
+            <span class="role-art" aria-hidden="true">♬</span>
+            <span class="role-card-copy"><strong>Keyboard</strong><small>Chords, pads &amp; arrangements</small></span>
           </button>
           <button class="role-card" data-role="Drum">
             <span class="role-art role-art-image" aria-hidden="true">
@@ -224,7 +228,8 @@
               <option value="Electric Guitar">Electric Guitar</option>
               <option value="Acoustic Guitar">Acoustic Guitar</option>
               <option value="Bass Guitar">Bass Guitar</option>
-              <option value="Drum">Drum</option>
+              <option value="Keyboard">Keyboard</option>
+            <option value="Drum">Drum</option>
             </select>
           </label>
           <label>Key<input id="songKey" placeholder="e.g. G"></label>
@@ -511,6 +516,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.4.7"></script>
+  <script src="./app.js?v=2.4.8"></script>
 </body>
 </html>
