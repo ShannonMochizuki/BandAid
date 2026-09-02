@@ -760,3 +760,16 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
 .live-mode-song-title{
   padding-top:0!important;
 }
+
+/* v2.4.13 — subtle setlist label in Live Chords */
+.live-mode-setname{
+  margin-top:2px;
+  font-size:.64rem!important;
+  line-height:1.2;
+  color:var(--muted,#777)!important;
+  font-weight:700;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}

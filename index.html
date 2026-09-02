@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.4.11 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.4.13 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.4.11">
-  <link rel="stylesheet" href="./styles.css?v=2.4.11">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.4.13">
+  <link rel="stylesheet" href="./styles.css?v=2.4.13">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.4.11</div>
+    <div class="version-indicator" aria-label="App version">v2.4.13</div>
 
         <header class="topbar">
       <div class="brand-lockup" aria-label="BandAid">
@@ -368,6 +368,7 @@ E|----------------|"></textarea>
         <div class="live-mode-song-title">
           <strong id="liveModeTitle">Choose a song</strong>
           <span id="liveModeArtist"></span>
+          <span id="liveModeSetName" class="live-mode-setname"></span>
         </div>
         <button id="liveSetlistBtn" class="live-mode-setlist-btn" type="button">Setlist</button>
       </header>
@@ -515,6 +516,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.4.11"></script>
+  <script src="./app.js?v=2.4.13"></script>
 </body>
 </html>
