@@ -702,7 +702,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   }
 }
 
-/* v2.4.8 — corrected role welcome */
+/* v2.4.9 — corrected role welcome */
 .role-welcome{
   margin-top:8px;
 }
@@ -719,7 +719,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   line-height:1.4;
 }
 
-/* v2.4.8 — tighten space between dashboard actions and role greeting */
+/* v2.4.9 — tighten space between dashboard actions and role greeting */
 .topbar{
   padding-bottom:4px!important;
 }
@@ -731,7 +731,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   margin-top:0!important;
 }
 
-/* v2.4.8 — use supplied drummer artwork in the Drum role card */
+/* v2.4.9 — use supplied drummer artwork in the Drum role card */
 .role-art-image{
   padding:0;
   overflow:hidden;
@@ -745,5 +745,5 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   object-position:center;
 }
 
-/* v2.4.8 supplied role artwork */
+/* v2.4.9 supplied role artwork */
 .role-art-image img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;}
