@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.3.0 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.4.0 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.3.0">
-  <link rel="stylesheet" href="./styles.css?v=2.3.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.4.0">
+  <link rel="stylesheet" href="./styles.css?v=2.4.0">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.3.0</div>
+    <div class="version-indicator" aria-label="App version">v2.4.0</div>
 
     <header class="topbar">
       <div class="brand-lockup" aria-label="BandAid">
@@ -94,9 +94,13 @@
         </div>
 
         <div id="liveCueBanner" class="live-cue-banner hidden" aria-live="assertive">
-          <span class="live-cue-kicker">WORSHIP LEADER CUE</span>
-          <strong id="liveCueText">Verse 1</strong>
-          <span id="liveCueTime" class="live-cue-time"></span>
+          <div class="live-cue-copy">
+            <span class="live-cue-kicker">NEXT</span>
+            <strong id="liveCueText">Verse 1</strong>
+            <span id="liveCueTime" class="live-cue-time"></span>
+          </div>
+          <button id="dismissLiveCueBtn" class="live-cue-dismiss" type="button" aria-label="Dismiss cue">×</button>
+          <span class="live-cue-progress" aria-hidden="true"></span>
         </div>
 
         <section id="liveSessionPanel" class="live-session-panel" aria-label="BandAid live session">
@@ -122,7 +126,10 @@
               <span class="eyebrow">CONNECTED</span>
               <strong id="connectedSessionCode">—</strong>
             </div>
-            <button id="leaveSessionBtn" class="ghost">Leave</button>
+            <div class="connected-session-actions">
+              <button id="openLiveModeBtn" class="primary compact" type="button">Live Chords</button>
+              <button id="leaveSessionBtn" class="ghost compact" type="button">Leave</button>
+            </div>
           </div>
           <div id="sessionStatus" class="last-cue-sent">Not connected.</div>
         </section>
@@ -335,6 +342,36 @@ E|----------------|"></textarea>
     </main>
 
 
+
+    <section id="liveChordMode" class="live-chord-mode hidden" aria-label="Live session chord mode">
+      <header class="live-mode-header">
+        <button id="exitLiveModeBtn" class="live-mode-icon-btn" type="button">←</button>
+        <div class="live-mode-song-title">
+          <span id="liveModeSetName" class="live-mode-kicker">LIVE SESSION</span>
+          <strong id="liveModeTitle">Choose a song</strong>
+          <span id="liveModeArtist"></span>
+        </div>
+        <button id="liveSetlistBtn" class="live-mode-setlist-btn" type="button">Setlist</button>
+      </header>
+      <div id="liveModeCueStrip" class="live-mode-cue-strip hidden" aria-live="assertive"><span>NEXT</span><strong id="liveModeCueText">Chorus</strong></div>
+      <div class="live-mode-toolbar">
+        <div class="live-mode-key"><span id="liveModeSourceKey">Key —</span><span>→</span>
+          <select id="liveModeKeySelect" aria-label="Transpose live chords"><option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select>
+        </div>
+        <div class="live-mode-font-controls"><button id="liveFontDownBtn" type="button">A−</button><button id="liveFontUpBtn" type="button">A+</button></div>
+      </div>
+      <main id="liveModeChords" class="live-mode-chords chart-renderer"><div class="live-mode-empty"><strong>No song selected</strong><span>Open Setlist to add songs for this live session.</span></div></main>
+      <footer class="live-mode-nav"><button id="livePrevBtn" type="button">← Previous</button><span id="liveModePosition">0 / 0</span><button id="liveNextBtn" type="button">Next →</button></footer>
+    </section>
+    <div id="liveSetlistDialog" class="dialog-backdrop live-setlist-dialog hidden" role="dialog" aria-modal="true">
+      <div class="dialog-card live-setlist-card">
+        <div class="admin-dialog-head"><div><div class="eyebrow">LIVE SESSION</div><h2>Setlist</h2></div><button id="closeLiveSetlistBtn" class="ghost compact" type="button">Close</button></div>
+        <label class="live-setlist-picker">Use list<select id="liveListSelect"></select></label>
+        <div class="live-set-create"><input id="liveNewListName" maxlength="60" placeholder="New setlist name"><button id="liveCreateListBtn" class="secondary" type="button">Create</button></div>
+        <div class="live-setlist-section"><div class="live-setlist-section-head"><strong>Set songs</strong><span id="liveSetSongCount">0 songs</span></div><div id="liveSetSongs" class="live-set-songs"></div></div>
+        <div class="live-setlist-section"><div class="live-setlist-section-head"><strong>Add songs</strong><span id="liveSetRoleLabel"></span></div><input id="liveSetSongSearch" type="search" placeholder="Search songs…"><div id="liveSetSongPicker" class="live-song-picker"></div></div>
+      </div>
+    </div>
     <div id="accountDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
       <div class="dialog-card">
         <div class="eyebrow">ACCOUNT</div>
@@ -460,6 +497,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.3.0"></script>
+  <script src="./app.js?v=2.4.0"></script>
 </body>
 </html>
