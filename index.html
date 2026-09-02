@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.4.1 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.4.2 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,20 +9,33 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.4.1">
-  <link rel="stylesheet" href="./styles.css?v=2.4.1">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.4.2">
+  <link rel="stylesheet" href="./styles.css?v=2.4.2">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.4.1</div>
+    <div class="version-indicator" aria-label="App version">v2.4.2</div>
 
-    <header class="topbar">
+        <header class="topbar">
       <div class="brand-lockup" aria-label="BandAid">
         <img class="bandaid-mark" src="bandaid-brand-icon.png" alt="" aria-hidden="true">
         <div class="brand-wordmark">BandAid</div>
       </div>
-      <div class="top-actions">
-        <div id="accountChip" class="account-chip hidden"><span id="accountName"></span><span id="adminBadge" class="admin-badge hidden">Admin</span><button id="accountBtn" class="ghost compact">Account</button><button id="adminBtn" class="ghost compact hidden">Admin</button><button id="logoutBtn" class="ghost compact">Log out</button></div>
+
+      <div id="profileCard" class="profile-card hidden">
+        <div class="profile-main">
+          <span class="profile-label">SIGNED IN AS</span>
+          <strong id="accountName"></strong>
+          <span id="adminBadge" class="admin-badge hidden">Admin</span>
+        </div>
+        <div class="profile-actions">
+          <button id="adminBtn" class="profile-icon-btn hidden" type="button" aria-label="Admin settings" title="Admin settings">⚙</button>
+          <button id="accountBtn" class="profile-icon-btn" type="button" aria-label="Account" title="Account">👤</button>
+          <button id="logoutBtn" class="profile-icon-btn" type="button" aria-label="Log out" title="Log out">↪</button>
+        </div>
+      </div>
+
+      <div class="top-actions quick-actions">
         <button id="listsBtn" class="secondary hidden">Lists</button>
         <button id="chordLibraryBtn" class="secondary hidden">My Chords</button>
         <button id="backupBtn" class="secondary hidden">Backup</button>
@@ -497,6 +510,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.4.1"></script>
+  <script src="./app.js?v=2.4.2"></script>
 </body>
 </html>

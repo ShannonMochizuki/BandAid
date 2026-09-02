@@ -132,7 +132,8 @@ async function enterAuthenticatedApp(user){
   currentProfile={id:user.id,username:user.username,display_username:user.display_username,is_admin:!!user.is_admin,pin_reset_required:!!user.pin_reset_required};
   isAdmin=!!currentProfile.is_admin;
   $("accountName").textContent=currentProfile.display_username||currentProfile.username||"User";
-  $("accountChip").classList.remove("hidden");
+  if($("roleGreeting")) $("roleGreeting").textContent=`Hi ${currentProfile.display_username||currentProfile.username||"User"}, what is your role today?`;
+  $("profileCard")?.classList.remove("hidden");
   $("adminBadge").classList.toggle("hidden",!isAdmin);
   $("adminBtn")?.classList.toggle("hidden",!isAdmin);
   $("backupBtn").classList.remove("hidden");
@@ -162,7 +163,7 @@ async function logout(){
   try{ if(accountToken) await supabaseClient.rpc("bandaid_logout",{p_token:accountToken}); }catch(e){}
   accountToken=""; localStorage.removeItem(ACCOUNT_TOKEN_KEY);
   currentUser=null; currentProfile=null; isAdmin=false; masterSongs=[]; personalCopies=new Map();
-  $("accountChip").classList.add("hidden"); $("backupBtn").classList.add("hidden"); $("listsBtn")?.classList.add("hidden"); $("chordLibraryBtn")?.classList.add("hidden"); $("newSongBtn").classList.add("hidden");
+  $("profileCard")?.classList.add("hidden"); $("backupBtn").classList.add("hidden"); $("listsBtn")?.classList.add("hidden"); $("chordLibraryBtn")?.classList.add("hidden"); $("newSongBtn").classList.add("hidden");
   showView("authView");
 }
 async function bootstrapAuth(){
@@ -658,7 +659,7 @@ async function addSongToLiveSet(songId,version){if(!liveModeListId)return alert(
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.1",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.2",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
