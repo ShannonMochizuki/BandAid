@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.2.5 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.3.0 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.2.5">
-  <link rel="stylesheet" href="./styles.css?v=2.2.5">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.3.0">
+  <link rel="stylesheet" href="./styles.css?v=2.3.0">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.2.5</div>
+    <div class="version-indicator" aria-label="App version">v2.3.0</div>
 
     <header class="topbar">
       <div class="brand-lockup" aria-label="BandAid">
@@ -226,7 +226,12 @@ Amazing grace, how sweet the sound
 G                 D
 That saved a wretch like me"></textarea>
           </label>
-          <p class="hint">Use square brackets for section names. Chords can be placed above lyrics or written as progressions.</p>
+          <p class="hint">Use square brackets for section names. Chords placed above lyrics are anchored to lyric positions, so alignment is preserved when font size changes.</p>
+          <div class="chart-preview-head">
+            <span>Saved-view preview</span>
+            <span class="hint">What you see here matches the song reader.</span>
+          </div>
+          <div id="songChordsPreview" class="chart-renderer editor-chart-preview" aria-label="Chord chart preview"></div>
         </div>
 
         <div id="tabsPanel" class="panel">
@@ -321,7 +326,7 @@ E|----------------|"></textarea>
             </div>
           </div>
 
-          <div id="readerChords" class="reader-panel active"></div>
+          <div id="readerChords" class="reader-panel active chart-renderer"></div>
           <div id="readerTabs" class="reader-panel mono"></div>
           <div id="readerShapes" class="reader-panel"></div>
           <div id="readerNotes" class="reader-panel"></div>
@@ -455,6 +460,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.2.5"></script>
+  <script src="./app.js?v=2.3.0"></script>
 </body>
 </html>

@@ -172,8 +172,8 @@ async function bootstrapAuth(){
   }catch(err){ setAuthStatus(`Could not connect to BandAid: ${err.message}`,true); showView("authView"); }
 }
 
-function fromMasterRow(r){ return {id:r.id,legacy_id:r.legacy_id,title:r.title||"",artist:r.artist||"",role:r.role||"Acoustic Guitar",key:r.song_key||"",capo:r.capo||"",bpm:r.bpm||"",chords:r.chords||"",tabs:r.tabs||"",notes:r.notes||"",shapes:Array.isArray(r.shapes)?r.shapes:[],createdAt:r.created_at,updatedAt:r.updated_at}; }
-function fromCopyRow(r){ return {...r,key:r.song_key||"",shapes:Array.isArray(r.shapes)?r.shapes:[]}; }
+function fromMasterRow(r){ return {id:r.id,legacy_id:r.legacy_id,title:r.title||"",artist:r.artist||"",role:r.role||"Acoustic Guitar",key:r.song_key||"",capo:r.capo||"",bpm:r.bpm||"",chords:r.chords||"",chordLayout:r.chord_layout||null,tabs:r.tabs||"",notes:r.notes||"",shapes:Array.isArray(r.shapes)?r.shapes:[],createdAt:r.created_at,updatedAt:r.updated_at}; }
+function fromCopyRow(r){ return {...r,key:r.song_key||"",chordLayout:r.chord_layout||null,shapes:Array.isArray(r.shapes)?r.shapes:[]}; }
 async function loadSongLibrary(){
   loadCachedCloudData(); renderLibrary();
   try{
@@ -325,10 +325,74 @@ function addShapeCard(shape={name:"",frets:"",fingers:""}){
 function currentShapes(){ return qsa("#shapeList .shape-card").map(card=>({name:card.querySelector(".shape-name").value.trim(),frets:card.querySelector(".shape-frets").value.trim(),fingers:card.querySelector(".shape-fingers").value.trim()})).filter(s=>s.name||s.frets||s.fingers); }
 function dataForSong(master,mode=readingMode){
   if(mode==="mine"){
-    const copy=personalCopies.get(master.id); if(copy) return {...master,key:copy.key,capo:copy.capo,bpm:copy.bpm,chords:copy.chords,tabs:copy.tabs,notes:copy.notes,shapes:copy.shapes||[],copyId:copy.id};
+    const copy=personalCopies.get(master.id); if(copy) return {...master,key:copy.key,capo:copy.capo,bpm:copy.bpm,chords:copy.chords,chordLayout:copy.chordLayout||copy.chord_layout||null,tabs:copy.tabs,notes:copy.notes,shapes:copy.shapes||[],copyId:copy.id};
   }
   return master;
 }
+
+function isLikelyChordLine(line=""){
+  const trimmed=String(line).trim();
+  if(!trimmed || /^\[.*\]$/.test(trimmed)) return false;
+  const parts=trimmed.split(/\s+/).filter(Boolean);
+  if(!parts.length)return false;
+  const chordish=parts.filter(p=>isChordToken(p.replace(/^[|([{]+|[|,;:.)\]}]+$/g,""))).length;
+  return chordish>0 && chordish/parts.length>=0.6;
+}
+function chordPositionsFromLine(line=""){
+  const result=[];
+  const rx=/\S+/g; let m;
+  while((m=rx.exec(line))){
+    const raw=m[0], core=raw.replace(/^[|([{]+|[|,;:.)\]}]+$/g,"");
+    if(isChordToken(core)) result.push({chord:core,index:m.index});
+  }
+  return result;
+}
+function buildChordLayout(text=""){
+  const lines=String(text||"").replace(/\r\n?/g,"\n").split("\n");
+  const items=[];
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    if(/^\s*\[.*\]\s*$/.test(line)){items.push({type:"section",text:line.trim()});continue;}
+    if(isLikelyChordLine(line)){
+      const next=lines[i+1];
+      if(next!=null && next.trim()!=="" && !isLikelyChordLine(next) && !/^\s*\[.*\]\s*$/.test(next)){
+        items.push({type:"lyric",lyric:next,chords:chordPositionsFromLine(line)});
+        i++; continue;
+      }
+      items.push({type:"chords",text:line}); continue;
+    }
+    if(line.trim()===""){items.push({type:"blank"});continue;}
+    items.push({type:"text",text:line});
+  }
+  return {version:1,items};
+}
+function transposeLayout(layout,fromKey,toKey){
+  if(!layout?.items)return layout;
+  return {version:1,items:layout.items.map(item=>{
+    if(item.type==="lyric")return {...item,chords:(item.chords||[]).map(c=>({...c,chord:transposeChord(c.chord,fromKey,toKey)}))};
+    if(item.type==="chords")return {...item,text:transposeChordChart(item.text,fromKey,toKey)};
+    return {...item};
+  })};
+}
+function renderChordLayout(target,layout){
+  if(!target)return;
+  const items=layout?.items||[];
+  target.innerHTML=items.map(item=>{
+    if(item.type==="blank")return '<div class="chart-blank" aria-hidden="true">&nbsp;</div>';
+    if(item.type==="section")return `<div class="chart-section">${esc(item.text.replace(/^\[|\]$/g,""))}</div>`;
+    if(item.type==="lyric"){
+      const chords=(item.chords||[]).map(c=>`<span class="anchored-chord" style="left:${Math.max(0,Number(c.index)||0)}ch">${esc(c.chord)}</span>`).join("");
+      return `<div class="chart-pair"><div class="chart-chord-row">${chords}</div><div class="chart-lyric-row">${esc(item.lyric)}</div></div>`;
+    }
+    if(item.type==="chords")return `<div class="chart-raw chord-only">${esc(item.text)}</div>`;
+    return `<div class="chart-raw">${esc(item.text||"")}</div>`;
+  }).join("");
+}
+function updateEditorChartPreview(){
+  const el=$("songChordsPreview"); if(!el)return;
+  renderChordLayout(el,buildChordLayout($("songChords")?.value||""));
+}
+
 function configureEditorFields(kind){
   const personal=kind==="copy";
   ["songTitle","songArtist","songRole"].forEach(id=>$(id).disabled=personal);
@@ -343,7 +407,7 @@ function openEditor(master=null,kind="master"){
   const source=kind==="copy"?(copy?dataForSong(master,"mine"):master):master;
   editingId=kind==="copy"?(copy?.id||null):(master?.id||null);
   $("songTitle").value=source?.title||""; $("songArtist").value=source?.artist||""; $("songRole").value=source?.role||activeRole;
-  $("songKey").value=source?.key||""; $("songCapo").value=source?.capo||""; $("songBpm").value=source?.bpm||""; $("songChords").value=source?.chords||""; $("songTabs").value=source?.tabs||""; $("songNotes").value=source?.notes||"";
+  $("songKey").value=source?.key||""; $("songCapo").value=source?.capo||""; $("songBpm").value=source?.bpm||""; $("songChords").value=source?.chords||""; $("songTabs").value=source?.tabs||""; $("songNotes").value=source?.notes||""; updateEditorChartPreview();
   $("shapeList").innerHTML=""; (source?.shapes||[]).forEach(addShapeCard);
   $("deleteBtn").style.visibility=editingId?"visible":"hidden"; configureEditorFields(kind);
   qsa(".tab").forEach((b,i)=>b.classList.toggle("active",i===0)); qsa(".panel").forEach((p,i)=>p.classList.toggle("active",i===0)); showView("editorView");
@@ -353,14 +417,14 @@ async function saveEditor(){
     const title=$("songTitle").value.trim(); if(!title){alert("Please enter a song title.");return;}
     if(editingKind==="master"){
       if(!isAdmin) throw new Error("Only the BandAid administrator can edit the Master Library.");
-      const chartText=$("songChords").value, detectedKey=inferKeyFromChordChart(chartText), enteredKey=canonicalKey($("songKey").value.trim()); const payload={id:editingId||"",title,artist:$("songArtist").value.trim(),role:$("songRole").value,song_key:detectedKey||enteredKey||"",capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:chartText,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
+      const chartText=$("songChords").value, detectedKey=inferKeyFromChordChart(chartText), enteredKey=canonicalKey($("songKey").value.trim()), chordLayout=buildChordLayout(chartText); const payload={id:editingId||"",title,artist:$("songArtist").value.trim(),role:$("songRole").value,song_key:detectedKey||enteredKey||"",capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:chartText,chord_layout:chordLayout,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
       const {data,error}=await supabaseClient.rpc("bandaid_save_master_song",{p_token:accountToken,p_payload:payload});
       if(error) throw error; if(data?.ok===false) throw new Error(data.error);
       const saved=fromMasterRow(data); const idx=masterSongs.findIndex(s=>s.id===saved.id); if(idx>=0)masterSongs[idx]=saved;else masterSongs.unshift(saved);
       activeRole=saved.role; localStorage.setItem("chordVaultActiveRole",activeRole); cacheCloudData(); renderLibrary(); openReader(saved.id);
     }else{
       const master=masterSongs.find(s=>s.id===editingMasterId); if(!master)throw new Error("Master song not found.");
-      const chartText=$("songChords").value, detectedKey=inferKeyFromChordChart(chartText), enteredKey=canonicalKey($("songKey").value.trim()); const payload={song_key:detectedKey||enteredKey||"",capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:chartText,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
+      const chartText=$("songChords").value, detectedKey=inferKeyFromChordChart(chartText), enteredKey=canonicalKey($("songKey").value.trim()), chordLayout=buildChordLayout(chartText); const payload={song_key:detectedKey||enteredKey||"",capo:$("songCapo").value.trim(),bpm:$("songBpm").value.trim(),chords:chartText,chord_layout:chordLayout,tabs:$("songTabs").value,notes:$("songNotes").value,shapes:currentShapes()};
       const {data,error}=await supabaseClient.rpc("bandaid_save_personal_copy",{p_token:accountToken,p_song_id:master.id,p_payload:payload});
       if(error)throw error;if(data?.ok===false)throw new Error(data.error);
       personalCopies.set(master.id,fromCopyRow(data)); cacheCloudData(); readingMode="mine"; renderLibrary(); openReader(master.id,"mine");
@@ -385,7 +449,7 @@ function renderReader(master,mode){
   $("readerTitle").textContent=master.title; $("readerArtist").textContent=master.artist||"NO ARTIST";
   const pills=[]; const actualKey=effectiveSongKey(s); if(master.role)pills.push(`<span class="meta-pill">${esc(master.role)}</span>`); if(actualKey)pills.push(`<span class="meta-pill">Key ${esc(actualKey)}</span>`); if(s.capo)pills.push(`<span class="meta-pill">Capo ${esc(s.capo)}</span>`); if(s.bpm)pills.push(`<span class="meta-pill">${esc(s.bpm)} BPM</span>`); $("readerMeta").innerHTML=pills.join("");
   const sourceKey=inferredSongKey(s); const targetKey=canonicalKey($("transposeKeySelect")?.value)||sourceKey;
-  $("readerChords").textContent=(sourceKey&&targetKey)?transposeChordChart(s.chords,sourceKey,targetKey):(s.chords||"No chord + lyric chart saved."); applySongFontScale(); $("readerTabs").textContent=s.tabs||"No guitar tab saved."; $("readerNotes").textContent=s.notes||"No notes saved.";
+  const baseLayout=s.chordLayout||s.chord_layout||buildChordLayout(s.chords); const shownLayout=(sourceKey&&targetKey)?transposeLayout(baseLayout,sourceKey,targetKey):baseLayout; renderChordLayout($("readerChords"),shownLayout); applySongFontScale(); $("readerTabs").textContent=s.tabs||"No guitar tab saved."; $("readerNotes").textContent=s.notes||"No notes saved.";
   if($("transposeKeySelect")){ const preferred=sourceKey||"C"; if(!$("transposeKeySelect").dataset.touched && [...$("transposeKeySelect").options].some(o=>o.value===preferred)) $("transposeKeySelect").value=preferred; $("transposeKeySelect").disabled=!sourceKey; $("transposeSourceLabel").textContent=sourceKey?`Key ${sourceKey}`:"Key —"; $("saveTransposeCopyBtn").disabled=!sourceKey; }
   $("readerShapes").innerHTML=s.shapes?.length?s.shapes.map((shape,i)=>`<div class="reader-shape">${makeDiagram(shape.name,shape.frets,shape.fingers)}<div class="hint mono">${esc(shape.frets)}${shape.fingers?" · fingers "+esc(shape.fingers):""}</div><button class="secondary compact save-reader-chord" data-shape-index="${i}" type="button">Save to My Chords</button></div>`).join(""):"No chord shapes saved."; qsa(".save-reader-chord").forEach(btn=>btn.addEventListener("click",()=>saveChordToLibrary((s.shapes||[])[Number(btn.dataset.shapeIndex)])));
   $("versionModeLabel").textContent=mode==="mine"?"My Private Copy":"Official Master"; $("versionModeHelp").textContent=mode==="mine"?"Only you can see and edit this version":"Shared read-only version for regular users";
@@ -402,7 +466,7 @@ async function togglePersonalCopy(){
   if(readingMode==="mine"){ readingMode="official"; return renderReader(master,readingMode); }
   if(!personalCopies.has(master.id)){
     try{
-      const payload={song_key:master.key,capo:master.capo,bpm:master.bpm,chords:master.chords,tabs:master.tabs,notes:master.notes,shapes:master.shapes||[]};
+      const payload={song_key:master.key,capo:master.capo,bpm:master.bpm,chords:master.chords,chord_layout:master.chordLayout||buildChordLayout(master.chords),tabs:master.tabs,notes:master.notes,shapes:master.shapes||[]};
       const {data,error}=await supabaseClient.rpc("bandaid_save_personal_copy",{p_token:accountToken,p_song_id:master.id,p_payload:payload}); if(error)throw error;
       personalCopies.set(master.id,fromCopyRow(data)); cacheCloudData(); renderLibrary();
     }catch(err){ return alert(`Could not create your copy: ${err.message}`); }
@@ -576,7 +640,7 @@ async function saveTransposedCopy(){
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.2.5",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.3.0",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
@@ -619,6 +683,7 @@ const SONG_FONT_STORAGE_KEY="bandaid_song_font_scale";
 let songFontScale=Math.max(0.8,Math.min(1.6,Number(localStorage.getItem(SONG_FONT_STORAGE_KEY))||1));
 function applySongFontScale(){
   if($("readerChords")) $("readerChords").style.fontSize=`${songFontScale}rem`;
+  if($("songChordsPreview")) $("songChordsPreview").style.fontSize=`${songFontScale}rem`;
   if($("songFontSizeLabel")) $("songFontSizeLabel").textContent=`${Math.round(songFontScale*100)}%`;
 }
 function changeSongFont(delta){
@@ -627,6 +692,7 @@ function changeSongFont(delta){
   applySongFontScale();
 }
 
+$("songChords")?.addEventListener("input",updateEditorChartPreview);
 $("songFontDownBtn")?.addEventListener("click",()=>changeSongFont(-0.1));
 $("songFontUpBtn")?.addEventListener("click",()=>changeSongFont(0.1));
 applySongFontScale();

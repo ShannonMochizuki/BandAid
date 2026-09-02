@@ -476,3 +476,72 @@ label input{margin-top:6px}
   #songFontSizeLabel{display:none}
   .font-btn{padding-inline:4px;min-width:27px}
 }
+
+/* v2.3.0 — WYSIWYG chord editor + anchored chord positions */
+#songChords{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-size:1rem;
+  line-height:1.55;
+  letter-spacing:0;
+  tab-size:4;
+  white-space:pre;
+  overflow:auto;
+  padding:18px 20px;
+}
+.chart-preview-head{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  margin:18px 2px 8px;font-weight:800;font-size:.78rem;color:var(--ink)
+}
+.editor-chart-preview{
+  min-height:140px;max-height:360px;overflow:auto;
+  border:1px solid var(--line);border-radius:16px;background:#fff;padding:18px 20px;
+}
+.chart-renderer{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  line-height:1.55;
+  letter-spacing:0;
+  tab-size:4;
+  overflow-x:auto;
+  overflow-y:visible;
+}
+#readerChords.chart-renderer{white-space:normal;padding-top:8px}
+.chart-section{
+  font-weight:800;
+  margin:1.35em 0 .45em;
+  white-space:nowrap;
+}
+.chart-section:first-child{margin-top:0}
+.chart-pair{
+  position:relative;
+  width:max-content;
+  min-width:100%;
+  margin:.15em 0 .4em;
+}
+.chart-chord-row{
+  position:relative;
+  height:1.55em;
+  min-width:max(100%, 1px);
+  white-space:nowrap;
+  font-weight:800;
+}
+.anchored-chord{
+  position:absolute;
+  top:0;
+  white-space:nowrap;
+}
+.chart-lyric-row{
+  white-space:pre;
+  min-height:1.55em;
+}
+.chart-raw{
+  white-space:pre;
+  width:max-content;
+  min-width:100%;
+  min-height:1.55em;
+}
+.chart-raw.chord-only{font-weight:800}
+.chart-blank{height:.75em}
+@media(max-width:560px){
+  #songChords,.editor-chart-preview{padding:16px}
+  .chart-preview-head{align-items:flex-start;flex-direction:column;gap:2px}
+}
