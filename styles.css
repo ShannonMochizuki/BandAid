@@ -702,7 +702,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   }
 }
 
-/* v2.4.4 — corrected role welcome */
+/* v2.4.5 — corrected role welcome */
 .role-welcome{
   margin-top:8px;
 }
@@ -719,7 +719,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   line-height:1.4;
 }
 
-/* v2.4.4 — tighten space between dashboard actions and role greeting */
+/* v2.4.5 — tighten space between dashboard actions and role greeting */
 .topbar{
   padding-bottom:4px!important;
 }
