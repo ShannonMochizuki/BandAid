@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BandAid v2.4.5 — Key Inference + Transpose Fix -->
+<!-- BandAid v2.4.6 — Key Inference + Transpose Fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,12 +9,12 @@
   <meta name="description" content="Store song chords, guitar tabs and chord shapes." />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="manifest" href="./manifest.webmanifest?v=2.4.5">
-  <link rel="stylesheet" href="./styles.css?v=2.4.5">
+  <link rel="manifest" href="./manifest.webmanifest?v=2.4.6">
+  <link rel="stylesheet" href="./styles.css?v=2.4.6">
 </head>
 <body>
   <div id="app">
-    <div class="version-indicator" aria-label="App version">v2.4.5</div>
+    <div class="version-indicator" aria-label="App version">v2.4.6</div>
 
         <header class="topbar">
       <div class="brand-lockup" aria-label="BandAid">
@@ -92,7 +92,9 @@
             <span class="role-card-copy"><strong>Bass Guitar</strong><small>Charts, tabs & grooves</small></span>
           </button>
           <button class="role-card" data-role="Drum">
-            <span class="role-art" aria-hidden="true">◉</span>
+            <span class="role-art role-art-image" aria-hidden="true">
+              <img src="role-drums.png" alt="">
+            </span>
             <span class="role-card-copy"><strong>Drum</strong><small>Structure, dynamics & live cues</small></span>
           </button>
         </div>
@@ -509,6 +511,6 @@ E|----------------|"></textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
-  <script src="./app.js?v=2.4.5"></script>
+  <script src="./app.js?v=2.4.6"></script>
 </body>
 </html>
