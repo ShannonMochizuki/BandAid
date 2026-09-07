@@ -285,11 +285,64 @@ async function addCurrentSongToList(listId,version){
   const {error}=await supabaseClient.rpc("bandaid_add_song_to_list",{p_token:accountToken,p_list_id:listId,p_song_id:master.id,p_version:version});
   if(error)return alert(error.message); closeAddToListDialog(); await loadSongLists();
 }
+
+const GUITAR_OPEN_MIDI=[40,45,50,55,59,64]; // low E, A, D, G, B, high e
+const NOTE_NAMES_SHARP=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const NOTE_NAMES_FLAT=["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+const INTERVAL_NAMES=["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"];
+
+function chordRootPitchClass(name=""){
+  const m=String(name).trim().match(/^([A-Ga-g])([#b]?)/);
+  if(!m)return null;
+  const note=(m[1].toUpperCase()+m[2]);
+  const map={C:0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,F:5,"F#":6,Gb:6,G:7,"G#":8,Ab:8,A:9,"A#":10,Bb:10,B:11};
+  return map[note] ?? null;
+}
+function noteNameForPc(pc,useFlats=false){
+  const names=useFlats?NOTE_NAMES_FLAT:NOTE_NAMES_SHARP;
+  return names[((pc%12)+12)%12];
+}
+function playedChordNotes(name,fretsRaw){
+  const frets=normalizeFrets(fretsRaw);
+  if(frets.length!==6)return {strings:[],unique:[]};
+  const useFlats=/b/.test(String(name||"").match(/^([A-Ga-g])([#b]?)/)?.[2]||"");
+  const rootPc=chordRootPitchClass(name);
+  const strings=[];
+  const uniqueMap=new Map();
+
+  frets.forEach((raw,i)=>{
+    const token=String(raw).trim();
+    if(!token || /^x$/i.test(token))return;
+    const fret=token==="0"?0:(/^\d+$/.test(token)?Number(token):null);
+    if(fret===null)return;
+    const midi=GUITAR_OPEN_MIDI[i]+fret;
+    const pc=midi%12;
+    const note=noteNameForPc(pc,useFlats);
+    const interval=rootPc===null?"":INTERVAL_NAMES[(pc-rootPc+12)%12];
+    const stringName=["E","A","D","G","B","e"][i];
+    strings.push({string:stringName,note,interval,fret});
+    if(!uniqueMap.has(pc))uniqueMap.set(pc,{note,interval,pc});
+  });
+
+  return {strings,unique:[...uniqueMap.values()]};
+}
+function chordNotesMarkup(name,fretsRaw){
+  const info=playedChordNotes(name,fretsRaw);
+  if(!info.unique.length)return "";
+  const chips=info.unique.map(n=>`<span class="chord-note-chip"><strong>${esc(n.note)}</strong>${n.interval?`<small>${esc(n.interval)}</small>`:""}</span>`).join("");
+  const strings=info.strings.map(n=>`<span><b>${esc(n.string)}</b> ${esc(n.note)}</span>`).join("");
+  return `<div class="saved-chord-notes">
+    <div class="saved-chord-notes-title">Notes in this chord</div>
+    <div class="saved-chord-note-chips">${chips}</div>
+    <div class="saved-chord-string-notes">${strings}</div>
+  </div>`;
+}
+
 function renderSavedChords(){
   const host=$("savedChordList");if(!host)return;
   if(!savedChords.length){host.innerHTML='<div class="empty-mini">No saved chords yet.</div>';return;}
   host.innerHTML=savedChords.map(c=>`<div class="saved-chord-row">
-    <div class="saved-chord-preview">${makeDiagram(c.name,c.frets,c.fingers)}<div class="hint mono">${esc(c.frets)}${c.fingers?" · fingers "+esc(c.fingers):""}</div></div>
+    <div class="saved-chord-preview">${makeDiagram(c.name,c.frets,c.fingers)}<div class="hint mono">${esc(c.frets)}${c.fingers?" · fingers "+esc(c.fingers):""}</div>${chordNotesMarkup(c.name,c.frets)}</div>
     <button class="ghost compact delete-saved-chord" data-id="${safeId(c.id)}">Delete</button>
   </div>`).join("");
   qsa(".delete-saved-chord").forEach(btn=>btn.addEventListener("click",()=>deleteSavedChord(btn.dataset.id)));
@@ -687,7 +740,7 @@ async function addSongToLiveSet(songId,version){if(!liveModeListId)return alert(
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.14",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.15",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
