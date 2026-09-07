@@ -761,7 +761,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   padding-top:0!important;
 }
 
-/* v2.4.13 — subtle setlist label in Live Chords */
+/* v2.4.14 — subtle setlist label in Live Chords */
 .live-mode-setname{
   margin-top:2px;
   font-size:.64rem!important;
@@ -772,4 +772,13 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   overflow:hidden;
   text-overflow:ellipsis;
   max-width:100%;
+}
+
+/* v2.4.14 — horizontal chord-diagram orientation:
+   low E at top, high e at bottom */
+.chord-diagram{
+  transform:rotate(90deg);
+}
+.chord-diagram .fret-dot{
+  transform:rotate(-90deg);
 }

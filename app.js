@@ -321,7 +321,7 @@ function makeDiagram(name,fretsRaw,fingersRaw){
   if(!nums.length)return `<span class="hint">Open/muted chord shape saved.</span>`;
   const minFret=Math.max(1,Math.min(...nums)); let cells="";
   for(let string=0;string<6;string++){
-    const f=frets[string]; if(/^\d+$/.test(f)&&Number(f)>0){ const row=Math.min(5,Math.max(1,Number(f)-minFret+1)); const finger=fingers[string]&&fingers[string]!=="0"&&fingers[string].toLowerCase()!=="x"?fingers[string]:""; cells+=`<span class="fret-dot" style="grid-column:${string+1};grid-row:${row}">${esc(finger)}</span>`; }
+    const f=frets[string]; if(/^\d+$/.test(f)&&Number(f)>0){ const row=Math.min(5,Math.max(1,Number(f)-minFret+1)); const finger=fingers[string]&&fingers[string]!=="0"&&fingers[string].toLowerCase()!=="x"?fingers[string]:""; cells+=`<span class="fret-dot" style="grid-column:${6-string};grid-row:${row}">${esc(finger)}</span>`; }
   }
   return `<span class="shape-label">${esc(name||"")}</span><div class="chord-diagram">${cells}</div><span class="hint">base fret ${minFret}</span>`;
 }
@@ -687,7 +687,7 @@ async function addSongToLiveSet(songId,version){if(!liveModeListId)return alert(
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.13",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.14",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
