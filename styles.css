@@ -761,7 +761,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   padding-top:0!important;
 }
 
-/* v2.4.15 — subtle setlist label in Live Chords */
+/* v2.4.16 — subtle setlist label in Live Chords */
 .live-mode-setname{
   margin-top:2px;
   font-size:.64rem!important;
@@ -774,7 +774,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   max-width:100%;
 }
 
-/* v2.4.15 — horizontal chord-diagram orientation:
+/* v2.4.16 — horizontal chord-diagram orientation:
    low E at top, high e at bottom */
 .chord-diagram{
   transform:rotate(90deg);
@@ -783,7 +783,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   transform:rotate(-90deg);
 }
 
-/* v2.4.15 — note summary for saved chord cards */
+/* v2.4.16 — note summary for saved chord cards */
 .saved-chord-notes{
   margin-top:14px;
   padding:12px;
@@ -841,4 +841,70 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
 @media(max-width:560px){
   .saved-chord-notes{padding:10px}
   .saved-chord-string-notes{font-size:.57rem}
+}
+
+/* v2.4.16 — saved chord card layout matching the requested reference */
+.saved-chord-row{position:relative;padding:22px 18px 20px!important}
+.saved-chord-preview{width:100%}
+.saved-chord-preview .shape-label{
+  display:block;font-size:1.55rem!important;font-weight:850;margin:0 120px 20px 0;color:var(--ink,#111)
+}
+.saved-chord-row .delete-saved-chord{
+  position:absolute;right:18px;top:18px;min-width:92px
+}
+.diagram-wrap{display:flex;align-items:stretch;width:100%;margin:0 0 12px}
+.diagram-labels{
+  width:34px;flex:0 0 34px;display:grid;grid-template-rows:repeat(6,1fr);
+  align-items:center;color:#666;font-weight:800;font-size:.86rem
+}
+.diagram-string-label{display:flex;align-items:center;height:100%}
+.saved-chord-preview .chord-diagram{
+  flex:1;width:auto!important;max-width:none!important;height:190px!important;
+  display:grid!important;grid-template-columns:repeat(6,1fr)!important;grid-template-rows:repeat(6,1fr)!important;
+  background-image:
+    linear-gradient(to right,transparent calc(100% - 1px),#777 calc(100% - 1px)),
+    linear-gradient(to bottom,transparent calc(100% - 1px),#777 calc(100% - 1px))!important;
+  background-size:calc(100% / 6) 100%,100% calc(100% / 6)!important;
+  border-left:1px solid #777;border-top:1px solid #777
+}
+.saved-chord-preview .fret-dot{
+  align-self:center!important;justify-self:center!important;
+  width:31px!important;height:31px!important;border-radius:50%!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  font-size:.78rem!important;font-weight:850!important;color:#fff!important;background:#111!important;
+  transform:none!important
+}
+.saved-fret-code{display:block;margin-top:2px;font-size:.9rem!important}
+.saved-chord-notes{margin-top:16px!important;padding:14px!important;border-radius:16px!important}
+.saved-chord-notes-title{font-size:.88rem!important;font-weight:500!important;margin-bottom:10px!important}
+.saved-chord-note-chips{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px!important}
+.chord-note-chip{
+  min-width:0!important;padding:10px 5px!important;display:flex!important;flex-direction:column!important;
+  gap:2px!important;align-items:center!important;justify-content:center!important;text-align:center!important
+}
+.chord-note-chip strong{font-size:1.05rem!important}
+.chord-note-chip small{font-size:.66rem!important;white-space:nowrap}
+.saved-chord-string-notes{display:none!important}
+@media(max-width:430px){
+  .saved-chord-preview .chord-diagram{height:170px!important}
+  .saved-chord-note-chips{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  .chord-note-chip small{font-size:.58rem!important}
+}
+
+
+/* v2.4.17 — show both useful chord-note views */
+.saved-chord-notes-compact{margin-top:10px!important}
+.saved-chord-notes-compact .saved-chord-notes-title{font-weight:700!important}
+.compact-note-chips{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.compact-note-chip{flex-direction:row!important;gap:5px!important;padding:9px 7px!important}
+.compact-note-chip strong{font-size:1rem!important}
+.compact-note-chip small{font-size:.7rem!important}
+.saved-chord-notes-compact .saved-chord-string-notes{
+  display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:10px;
+  font-size:.64rem!important;text-align:center;color:#666
+}
+.saved-chord-notes-compact .saved-chord-string-notes span{min-width:0;white-space:nowrap}
+.saved-chord-notes-compact .saved-chord-string-notes b{color:#222;margin-right:2px}
+@media(max-width:430px){
+  .saved-chord-notes-compact .saved-chord-string-notes{font-size:.57rem!important;gap:2px}
 }

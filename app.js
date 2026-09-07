@@ -290,6 +290,11 @@ const GUITAR_OPEN_MIDI=[40,45,50,55,59,64]; // low E, A, D, G, B, high e
 const NOTE_NAMES_SHARP=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const NOTE_NAMES_FLAT=["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
 const INTERVAL_NAMES=["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"];
+const INTERVAL_LONG_NAMES={
+  "1":"Root","b2":"Minor 2nd","2":"Major 2nd","b3":"Minor 3rd","3":"Major 3rd",
+  "4":"Perfect 4th","b5":"Diminished 5th","5":"Perfect 5th","b6":"Minor 6th",
+  "6":"Major 6th","b7":"Minor 7th","7":"Major 7th"
+};
 
 function chordRootPitchClass(name=""){
   const m=String(name).trim().match(/^([A-Ga-g])([#b]?)/);
@@ -326,15 +331,70 @@ function playedChordNotes(name,fretsRaw){
 
   return {strings,unique:[...uniqueMap.values()]};
 }
+function expectedChordTonePcs(name=""){
+  const root=chordRootPitchClass(name);
+  if(root===null)return null;
+  const n=String(name).trim();
+  let ints;
+  if(/maj7/i.test(n)) ints=[0,4,7,11];
+  else if(/(?:m|min)7/i.test(n) && !/maj/i.test(n)) ints=[0,3,7,10];
+  else if(/(?:dim7|°7)/i.test(n)) ints=[0,3,6,9];
+  else if(/(?:dim|°)/i.test(n)) ints=[0,3,6];
+  else if(/(?:aug|\+)/i.test(n)) ints=[0,4,8];
+  else if(/sus2/i.test(n)) ints=[0,2,7];
+  else if(/sus4|sus/i.test(n)) ints=[0,5,7];
+  else if(/(?:m|min)/i.test(n) && !/maj/i.test(n)) ints=[0,3,7];
+  else ints=[0,4,7];
+  return ints.map(i=>(root+i)%12);
+}
+function preferredChordToneName(name,pc,interval){
+  const rootMatch=String(name).trim().match(/^([A-Ga-g])([#b]?)/);
+  if(!rootMatch)return noteNameForPc(pc,false);
+  const root=rootMatch[1].toUpperCase()+rootMatch[2];
+  const rootPc=chordRootPitchClass(root);
+  const letterOrder=["C","D","E","F","G","A","B"];
+  const rootLetter=root[0], rootIdx=letterOrder.indexOf(rootLetter);
+  const degreeMap={"1":0,"b2":1,"2":1,"b3":2,"3":2,"4":3,"b5":4,"5":4,"b6":5,"6":5,"b7":6,"7":6};
+  const targetLetter=letterOrder[(rootIdx+(degreeMap[interval]??0))%7];
+  const naturalPc={C:0,D:2,E:4,F:5,G:7,A:9,B:11}[targetLetter];
+  let diff=(pc-naturalPc+12)%12;
+  if(diff===0)return targetLetter;
+  if(diff===1)return targetLetter+"#";
+  if(diff===11)return targetLetter+"b";
+  return noteNameForPc(pc,/b/.test(root));
+}
+function notePcFromName(note=""){
+  const map={C:0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,F:5,"F#":6,Gb:6,G:7,"G#":8,Ab:8,A:9,"A#":10,Bb:10,B:11};
+  return map[String(note)] ?? 0;
+}
 function chordNotesMarkup(name,fretsRaw){
   const info=playedChordNotes(name,fretsRaw);
   if(!info.unique.length)return "";
-  const chips=info.unique.map(n=>`<span class="chord-note-chip"><strong>${esc(n.note)}</strong>${n.interval?`<small>${esc(n.interval)}</small>`:""}</span>`).join("");
-  const strings=info.strings.map(n=>`<span><b>${esc(n.string)}</b> ${esc(n.note)}</span>`).join("");
-  return `<div class="saved-chord-notes">
+  const expected=expectedChordTonePcs(name);
+  let tones=info.unique;
+  if(expected && expected.every(pc=>info.unique.some(n=>n.pc===pc))){
+    tones=expected.map(pc=>info.unique.find(n=>n.pc===pc));
+  }
+  const chips=tones.map(n=>{
+    const interval=n.interval||"";
+    const note=preferredChordToneName(name,n.pc,interval);
+    const longName=INTERVAL_LONG_NAMES[interval]||"";
+    return `<span class="chord-note-chip"><strong>${esc(note)}</strong><small>${esc(interval)}${longName?` (${esc(longName)})`:""}</small></span>`;
+  }).join("");
+  const compactChips=tones.map(n=>{
+    const interval=n.interval||"";
+    const note=preferredChordToneName(name,n.pc,interval);
+    return `<span class="chord-note-chip compact-note-chip"><strong>${esc(note)}</strong><small>${esc(interval)}</small></span>`;
+  }).join("");
+  const stringNotes=info.strings.map(n=>`<span><b>${esc(n.string)}</b> ${esc(preferredChordToneName(name,notePcFromName(n.note),n.interval)||n.note)}</span>`).join("");
+  return `<div class="saved-chord-notes saved-chord-notes-detailed">
     <div class="saved-chord-notes-title">Notes in this chord</div>
     <div class="saved-chord-note-chips">${chips}</div>
-    <div class="saved-chord-string-notes">${strings}</div>
+  </div>
+  <div class="saved-chord-notes saved-chord-notes-compact">
+    <div class="saved-chord-notes-title">Played notes by string</div>
+    <div class="saved-chord-note-chips compact-note-chips">${compactChips}</div>
+    <div class="saved-chord-string-notes">${stringNotes}</div>
   </div>`;
 }
 
@@ -342,7 +402,7 @@ function renderSavedChords(){
   const host=$("savedChordList");if(!host)return;
   if(!savedChords.length){host.innerHTML='<div class="empty-mini">No saved chords yet.</div>';return;}
   host.innerHTML=savedChords.map(c=>`<div class="saved-chord-row">
-    <div class="saved-chord-preview">${makeDiagram(c.name,c.frets,c.fingers)}<div class="hint mono">${esc(c.frets)}${c.fingers?" · fingers "+esc(c.fingers):""}</div>${chordNotesMarkup(c.name,c.frets)}</div>
+    <div class="saved-chord-preview">${makeDiagram(c.name,c.frets,c.fingers)}<div class="hint mono saved-fret-code">${esc(c.frets)}</div>${chordNotesMarkup(c.name,c.frets)}</div>
     <button class="ghost compact delete-saved-chord" data-id="${safeId(c.id)}">Delete</button>
   </div>`).join("");
   qsa(".delete-saved-chord").forEach(btn=>btn.addEventListener("click",()=>deleteSavedChord(btn.dataset.id)));
@@ -373,10 +433,16 @@ function makeDiagram(name,fretsRaw,fingersRaw){
   const nums=frets.map(x=>(/^\d+$/.test(x)?Number(x):null)).filter(x=>x!==null&&x>0);
   if(!nums.length)return `<span class="hint">Open/muted chord shape saved.</span>`;
   const minFret=Math.max(1,Math.min(...nums)); let cells="";
+  const stringLabels=["E","A","D","G","B","e"].map((s,i)=>`<span class="diagram-string-label" style="grid-row:${i+1}">${s}</span>`).join("");
   for(let string=0;string<6;string++){
-    const f=frets[string]; if(/^\d+$/.test(f)&&Number(f)>0){ const row=Math.min(5,Math.max(1,Number(f)-minFret+1)); const finger=fingers[string]&&fingers[string]!=="0"&&fingers[string].toLowerCase()!=="x"?fingers[string]:""; cells+=`<span class="fret-dot" style="grid-column:${6-string};grid-row:${row}">${esc(finger)}</span>`; }
+    const f=frets[string];
+    if(/^\d+$/.test(f)&&Number(f)>0){
+      const col=Math.min(6,Math.max(1,Number(f)-minFret+1));
+      const finger=fingers[string]&&fingers[string]!=="0"&&fingers[string].toLowerCase()!=="x"?fingers[string]:"";
+      cells+=`<span class="fret-dot" style="grid-column:${col};grid-row:${string+1}">${esc(finger)}</span>`;
+    }
   }
-  return `<span class="shape-label">${esc(name||"")}</span><div class="chord-diagram">${cells}</div><span class="hint">base fret ${minFret}</span>`;
+  return `<span class="shape-label">${esc(name||"")}</span><div class="diagram-wrap"><div class="diagram-labels">${stringLabels}</div><div class="chord-diagram">${cells}</div></div><span class="hint">Base fret ${minFret}</span>`;
 }
 function addShapeCard(shape={name:"",frets:"",fingers:""}){
   const node=$("shapeTemplate").content.firstElementChild.cloneNode(true);
@@ -740,7 +806,7 @@ async function addSongToLiveSet(songId,version){if(!liveModeListId)return alert(
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.15",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.17",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;
