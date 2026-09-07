@@ -308,7 +308,7 @@ function noteNameForPc(pc,useFlats=false){
   return names[((pc%12)+12)%12];
 }
 function playedChordNotes(name,fretsRaw){
-  const frets=normalizeFrets(fretsRaw);
+  const frets=normalizeFrets(fretsRaw).slice(0,6).reverse(); // display/analyse low E -> high e
   if(frets.length!==6)return {strings:[],unique:[]};
   const useFlats=/b/.test(String(name||"").match(/^([A-Ga-g])([#b]?)/)?.[2]||"");
   const rootPc=chordRootPitchClass(name);
@@ -428,7 +428,9 @@ async function deleteSavedChord(id){
 
 function normalizeFrets(raw=""){ raw=raw.trim(); if(!raw)return[]; if(raw.includes("-")||raw.includes(" "))return raw.split(/[-\s,]+/).filter(Boolean); return raw.split(""); }
 function makeDiagram(name,fretsRaw,fingersRaw){
-  const frets=normalizeFrets(fretsRaw),fingers=normalizeFrets(fingersRaw);
+  // Saved entry order is high e -> low E; visual rows are low E -> high e.
+  const frets=normalizeFrets(fretsRaw).slice(0,6).reverse(),
+        fingers=normalizeFrets(fingersRaw).slice(0,6).reverse();
   if(frets.length!==6)return `<span class="hint">Enter 6 strings to preview.</span>`;
   const nums=frets.map(x=>(/^\d+$/.test(x)?Number(x):null)).filter(x=>x!==null&&x>0);
   if(!nums.length)return `<span class="hint">Open/muted chord shape saved.</span>`;
@@ -818,7 +820,7 @@ async function addSongToLiveSet(songId,version){if(!liveModeListId)return alert(
 
 // ---------- Backup + legacy migration ----------
 function backupStatus(message,isError=false){const el=$("backupStatus");el.textContent=message;el.classList.remove("hidden");el.classList.toggle("error",!!isError);}
-function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.19",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
+function exportBackup(){const payload={format:"BandAid v2 Backup",version:"2.4.21",exportedAt:new Date().toISOString(),username:currentProfile?.username,personalCopies:[...personalCopies.values()],legacySongs:legacySongs()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`BandAid_Backup_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);backupStatus("Backup exported.");}
 async function prepareRestore(file){if(!file)return;try{const raw=JSON.parse(await file.text());const rows=raw.legacySongs||raw.songs||raw.data?.songs||[];if(!Array.isArray(rows))throw new Error("No compatible legacy songs found.");localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(rows));backupStatus(`Restored ${rows.length} legacy song${rows.length===1?"":"s"}. ${isAdmin?"Use ‘Import Local Songs to Master’ to publish them.":"They remain local until an admin imports them."}`);$("importLocalMasterBtn")?.classList.toggle("hidden",!isAdmin||rows.length===0);}catch(err){backupStatus(`Restore failed: ${err.message}`,true);}finally{$("backupFileInput").value="";}}
 async function importLocalSongsToMaster(){
   if(!isAdmin)return;const rows=legacySongs();if(!rows.length)return backupStatus("No legacy local songs found.",true);if(!confirm(`Import ${rows.length} local song${rows.length===1?"":"s"} into the shared Master Library?`))return;

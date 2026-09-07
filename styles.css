@@ -892,7 +892,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
 }
 
 
-/* v2.4.19 — show both useful chord-note views */
+/* v2.4.21 — show both useful chord-note views */
 .saved-chord-notes-compact{margin-top:10px!important}
 .saved-chord-notes-compact .saved-chord-notes-title{font-weight:700!important}
 .compact-note-chips{grid-template-columns:repeat(4,minmax(0,1fr))!important}
@@ -909,7 +909,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   .saved-chord-notes-compact .saved-chord-string-notes{font-size:.57rem!important;gap:2px}
 }
 
-/* v2.4.19 — saved chord fretboard alignment + single-row note panels */
+/* v2.4.21 — saved chord fretboard alignment + single-row note panels */
 .saved-chord-preview .diagram-wrap{
   display:grid!important;
   grid-template-columns:34px minmax(0,1fr)!important;
@@ -983,7 +983,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   white-space:nowrap!important;
 }
 
-/* v2.4.19 — dedicated saved-chord fretboard component.
+/* v2.4.21 — dedicated saved-chord fretboard component.
    This intentionally does NOT use legacy .chord-diagram or .fret-dot classes. */
 .saved-chord-grid-wrap{
   display:grid!important;
