@@ -437,14 +437,15 @@ function makeDiagram(name,fretsRaw,fingersRaw){
 
   const minFret=Math.max(1,Math.min(...nums));
   let dots="";
-  const labels=["E","A","D","G","B","e"]
+  const stringNames=["E","A","D","G","B","e"];
+  const labels=stringNames
     .map((s,i)=>`<span class="saved-string-label" style="grid-row:${i+1}">${s}</span>`)
     .join("");
 
   for(let string=0;string<6;string++){
     const raw=frets[string];
     if(String(raw).toLowerCase()==="x"){
-      dots+=`<span class="saved-muted-string" style="grid-row:${string+1}" aria-label="${labels[string]||"String"} muted">×</span>`;
+      dots+=`<span class="saved-muted-string" style="grid-row:${string+1};grid-column:6" aria-label="${stringNames[string]||"String"} muted">×</span>`;
     }else if(/^\d+$/.test(raw)&&Number(raw)>0){
       const fret=Number(raw);
       const col=Math.max(1,Math.min(6,6-(fret-minFret)));
