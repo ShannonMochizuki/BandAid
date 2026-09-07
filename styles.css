@@ -892,7 +892,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
 }
 
 
-/* v2.4.18 — show both useful chord-note views */
+/* v2.4.19 — show both useful chord-note views */
 .saved-chord-notes-compact{margin-top:10px!important}
 .saved-chord-notes-compact .saved-chord-notes-title{font-weight:700!important}
 .compact-note-chips{grid-template-columns:repeat(4,minmax(0,1fr))!important}
@@ -909,7 +909,7 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
   .saved-chord-notes-compact .saved-chord-string-notes{font-size:.57rem!important;gap:2px}
 }
 
-/* v2.4.18 — saved chord fretboard alignment + single-row note panels */
+/* v2.4.19 — saved chord fretboard alignment + single-row note panels */
 .saved-chord-preview .diagram-wrap{
   display:grid!important;
   grid-template-columns:34px minmax(0,1fr)!important;
@@ -981,4 +981,110 @@ body.live-mode-open{overflow:hidden}.live-cue-banner{position:fixed!important;to
 .saved-chord-notes-compact .saved-chord-string-notes span{
   flex:0 0 auto!important;
   white-space:nowrap!important;
+}
+
+/* v2.4.19 — dedicated saved-chord fretboard component.
+   This intentionally does NOT use legacy .chord-diagram or .fret-dot classes. */
+.saved-chord-grid-wrap{
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr)!important;
+  column-gap:8px!important;
+  align-items:stretch!important;
+  width:100%!important;
+  margin:0 0 12px!important;
+}
+
+.saved-chord-string-labels{
+  display:grid!important;
+  grid-template-rows:repeat(6,1fr)!important;
+  width:34px!important;
+  min-width:34px!important;
+  height:192px!important;
+  color:#666!important;
+  font-size:.86rem!important;
+  font-weight:800!important;
+}
+
+.saved-string-label{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  line-height:1!important;
+  min-height:0!important;
+}
+
+.saved-chord-fretboard{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  grid-template-rows:repeat(6,minmax(0,1fr))!important;
+  width:100%!important;
+  height:192px!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  border:1px solid #777!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+
+  background-image:
+    linear-gradient(to right,
+      transparent calc(100% - 1px),
+      #777 calc(100% - 1px)),
+    linear-gradient(to bottom,
+      transparent calc(100% - 1px),
+      #777 calc(100% - 1px))!important;
+  background-size:
+    calc(100% / 6) 100%,
+    100% calc(100% / 6)!important;
+  background-position:0 0!important;
+  background-repeat:repeat!important;
+}
+
+.saved-chord-fretboard::before,
+.saved-chord-fretboard::after{
+  content:none!important;
+  display:none!important;
+}
+
+.saved-fret-dot{
+  position:relative!important;
+  z-index:2!important;
+  align-self:center!important;
+  justify-self:center!important;
+  width:32px!important;
+  height:32px!important;
+  border-radius:50%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  background:#111!important;
+  color:#fff!important;
+  font-size:.78rem!important;
+  font-weight:850!important;
+  line-height:1!important;
+  box-sizing:border-box!important;
+}
+
+/* Prevent any legacy saved-chord diagram from rendering if stale markup survives cache. */
+.saved-chord-preview .chord-diagram,
+.saved-chord-preview .diagram-wrap,
+.saved-chord-preview .diagram-labels,
+.saved-chord-preview .fret-dot{
+  all:unset;
+}
+
+@media(max-width:430px){
+  .saved-chord-string-labels,
+  .saved-chord-fretboard{
+    height:174px!important;
+  }
+  .saved-fret-dot{
+    width:29px!important;
+    height:29px!important;
+    font-size:.72rem!important;
+  }
 }

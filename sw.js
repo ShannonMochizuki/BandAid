@@ -1,13 +1,13 @@
-const CACHE = "bandaid-chord-vault-v2.4.18";
+const CACHE = "bandaid-chord-vault-v2.4.19";
 const CACHE_PREFIX = "bandaid-chord-vault-";
 const APP_SCOPE = "/BandAid/";
 
 const PRECACHE_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=2.4.18",
-  "./app.js?v=2.4.18",
-  "./manifest.webmanifest?v=2.4.18",
+  "./styles.css?v=2.4.19",
+  "./app.js?v=2.4.19",
+  "./manifest.webmanifest?v=2.4.19",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png"
